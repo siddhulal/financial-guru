@@ -125,9 +125,10 @@ public class FireCalculatorService {
         for (int y = 0; y <= 40; y++) {
             final int yr = y;
             double[] vals = simRuns.stream().mapToDouble(r -> r[yr]).sorted().toArray();
-            p10.add(BigDecimal.valueOf(vals[(int) (vals.length * 0.10)]).setScale(0, RoundingMode.HALF_UP));
-            p50.add(BigDecimal.valueOf(vals[(int) (vals.length * 0.50)]).setScale(0, RoundingMode.HALF_UP));
-            p90.add(BigDecimal.valueOf(vals[(int) (vals.length * 0.90)]).setScale(0, RoundingMode.HALF_UP));
+            // Standard nearest-rank percentile: index = ceil(N * p) - 1 (0-based)
+            p10.add(BigDecimal.valueOf(vals[Math.max(0, (int)Math.ceil(vals.length * 0.10) - 1)]).setScale(0, RoundingMode.HALF_UP));
+            p50.add(BigDecimal.valueOf(vals[Math.max(0, (int)Math.ceil(vals.length * 0.50) - 1)]).setScale(0, RoundingMode.HALF_UP));
+            p90.add(BigDecimal.valueOf(vals[Math.min(vals.length - 1, (int)Math.ceil(vals.length * 0.90) - 1)]).setScale(0, RoundingMode.HALF_UP));
         }
 
         return FireCalculatorResponse.builder()

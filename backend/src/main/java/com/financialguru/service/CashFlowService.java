@@ -47,8 +47,10 @@ public class CashFlowService {
                     firstDay, "INCOME", "Monthly Salary", profile.getMonthlyIncome(), null, false));
                 case "BIWEEKLY" -> {
                     LocalDate pay = firstDay;
+                    // 26 biweekly pays/year, not 24 — each = monthlyIncome × 12 / 26
                     BigDecimal biweekly = profile.getMonthlyIncome()
-                        .divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
+                        .multiply(BigDecimal.valueOf(12))
+                        .divide(BigDecimal.valueOf(26), 2, RoundingMode.HALF_UP);
                     while (!pay.isAfter(lastDay)) {
                         events.add(new CashFlowEvent(pay, "INCOME", "Biweekly Pay", biweekly, null, false));
                         pay = pay.plusDays(14);
@@ -56,8 +58,10 @@ public class CashFlowService {
                 }
                 case "WEEKLY" -> {
                     LocalDate pay = firstDay;
+                    // 52 weekly pays/year, not 48 — each = monthlyIncome × 12 / 52
                     BigDecimal weekly = profile.getMonthlyIncome()
-                        .divide(BigDecimal.valueOf(4), 2, RoundingMode.HALF_UP);
+                        .multiply(BigDecimal.valueOf(12))
+                        .divide(BigDecimal.valueOf(52), 2, RoundingMode.HALF_UP);
                     while (!pay.isAfter(lastDay)) {
                         events.add(new CashFlowEvent(pay, "INCOME", "Weekly Pay", weekly, null, false));
                         pay = pay.plusDays(7);

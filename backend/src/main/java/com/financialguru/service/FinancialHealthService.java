@@ -100,24 +100,30 @@ public class FinancialHealthService {
         total += srScore;
 
         // 4. Debt Trend (0-15)
-        LocalDate threeMonthsAgo = today.minusMonths(3);
-        BigDecimal spend3M = transactionRepository.sumAllSpending(
-            threeMonthsAgo, today.minusMonths(2).withDayOfMonth(1));
+        // Compare last month's spending to the 3-month average (months 2-4 ago)
+        LocalDate startOld = today.minusMonths(4).withDayOfMonth(1);
+        LocalDate endOld   = today.minusMonths(1).withDayOfMonth(1).minusDays(1);
+        BigDecimal spend3M = transactionRepository.sumAllSpending(startOld, endOld);
+        if (spend3M == null) spend3M = ZERO;
+        BigDecimal avgMonthly3M = spend3M.compareTo(ZERO) > 0
+            ? spend3M.divide(BigDecimal.valueOf(3), 2, RoundingMode.HALF_UP) : ZERO;
         BigDecimal spendRecent = transactionRepository.sumAllSpending(
             today.minusMonths(1).withDayOfMonth(1), today);
-        if (spend3M == null) spend3M = ZERO;
         if (spendRecent == null) spendRecent = ZERO;
         int debtScore;
         String debtExplanation;
-        if (spendRecent.compareTo(spend3M) < 0) {
-            debtScore = 15;
-            debtExplanation = "Spending trending down — good debt management.";
-        } else if (spendRecent.compareTo(spend3M.multiply(new BigDecimal("1.10"))) <= 0) {
+        if (avgMonthly3M.compareTo(ZERO) == 0) {
             debtScore = 8;
-            debtExplanation = "Spending stable — maintain your payment habits.";
+            debtExplanation = "Not enough history to assess spending trend.";
+        } else if (spendRecent.compareTo(avgMonthly3M) < 0) {
+            debtScore = 15;
+            debtExplanation = "Spending trending down vs 3-month average — good debt management.";
+        } else if (spendRecent.compareTo(avgMonthly3M.multiply(new BigDecimal("1.10"))) <= 0) {
+            debtScore = 8;
+            debtExplanation = "Spending stable vs 3-month average — maintain your payment habits.";
         } else {
             debtScore = 2;
-            debtExplanation = "Spending increasing — watch your credit card balances.";
+            debtExplanation = "Spending up >10% vs 3-month average — watch your credit card balances.";
         }
         pillars.add(new ScorePillar("Debt Trend", debtScore, 15, debtExplanation));
         total += debtScore;

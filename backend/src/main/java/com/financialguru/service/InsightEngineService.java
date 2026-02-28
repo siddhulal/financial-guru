@@ -304,7 +304,8 @@ public class InsightEngineService {
         if (isDuplicate(Insight.InsightType.SPENDING_YOUR_RAISE, null)) return List.of();
 
         BigDecimal gap = spendGrowthPct.subtract(incomeGrowthPct);
-        BigDecimal extraMonthlySpend = dailySpendThis.subtract(dailyIncomeLast)
+        // Extra monthly spend = increase in daily spending rate vs last year × 30 days
+        BigDecimal extraMonthlySpend = dailySpendThis.subtract(dailySpendLast)
             .multiply(BigDecimal.valueOf(30));
 
         return List.of(save(Insight.builder()
