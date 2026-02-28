@@ -42,6 +42,7 @@ public class InsightEngineService {
         all.addAll(detectAtmFeeWaste());
         all.addAll(detectCategoryYoYSpike());
         all.addAll(detectBillIncreases());
+        all.addAll(detectSpendingYourRaise());
 
         insightRepository.deleteOlderThan(OffsetDateTime.now().minusDays(90));
 
@@ -257,5 +258,69 @@ public class InsightEngineService {
             }
         }
         return insights;
+    }
+
+    private List<Insight> detectSpendingYourRaise() {
+        LocalDate today = LocalDate.now();
+        LocalDate thisYearStart = today.withDayOfYear(1);
+        LocalDate lastYearStart = today.minusYears(1).withDayOfYear(1);
+        LocalDate lastYearEnd = today.minusYears(1);
+
+        BigDecimal incomeThisYear = safe(transactionRepository.sumIncomeAmount(
+            new BigDecimal("200"), thisYearStart, today));
+        BigDecimal incomeLastYear = safe(transactionRepository.sumIncomeAmount(
+            new BigDecimal("200"), lastYearStart, lastYearEnd));
+
+        if (incomeThisYear.compareTo(BigDecimal.ZERO) == 0
+            || incomeLastYear.compareTo(BigDecimal.ZERO) == 0) {
+            return List.of();
+        }
+
+        // Normalize to same number of days for fair comparison
+        long daysThisYear = java.time.temporal.ChronoUnit.DAYS.between(thisYearStart, today);
+        long daysLastYear = java.time.temporal.ChronoUnit.DAYS.between(lastYearStart, lastYearEnd);
+        if (daysThisYear == 0 || daysLastYear == 0) return List.of();
+
+        BigDecimal dailyIncomeThis = incomeThisYear.divide(BigDecimal.valueOf(daysThisYear), 4, java.math.RoundingMode.HALF_UP);
+        BigDecimal dailyIncomeLast = incomeLastYear.divide(BigDecimal.valueOf(daysLastYear), 4, java.math.RoundingMode.HALF_UP);
+
+        BigDecimal spendThisYear = safe(transactionRepository.sumAllSpending(thisYearStart, today));
+        BigDecimal spendLastYear = safe(transactionRepository.sumAllSpending(lastYearStart, lastYearEnd));
+        if (spendLastYear.compareTo(BigDecimal.ZERO) == 0) return List.of();
+
+        BigDecimal dailySpendThis = spendThisYear.divide(BigDecimal.valueOf(daysThisYear), 4, java.math.RoundingMode.HALF_UP);
+        BigDecimal dailySpendLast = spendLastYear.divide(BigDecimal.valueOf(daysLastYear), 4, java.math.RoundingMode.HALF_UP);
+
+        BigDecimal incomeGrowthPct = dailyIncomeThis.subtract(dailyIncomeLast)
+            .divide(dailyIncomeLast, 4, java.math.RoundingMode.HALF_UP)
+            .multiply(BigDecimal.valueOf(100));
+        BigDecimal spendGrowthPct = dailySpendThis.subtract(dailySpendLast)
+            .divide(dailySpendLast, 4, java.math.RoundingMode.HALF_UP)
+            .multiply(BigDecimal.valueOf(100));
+
+        // Trigger if income grew > 5% AND spending grew faster than income
+        if (incomeGrowthPct.compareTo(new BigDecimal("5")) < 0) return List.of();
+        if (spendGrowthPct.compareTo(incomeGrowthPct) <= 0) return List.of();
+        if (isDuplicate(Insight.InsightType.SPENDING_YOUR_RAISE, null)) return List.of();
+
+        BigDecimal gap = spendGrowthPct.subtract(incomeGrowthPct);
+        BigDecimal extraMonthlySpend = dailySpendThis.subtract(dailyIncomeLast)
+            .multiply(BigDecimal.valueOf(30));
+
+        return List.of(save(Insight.builder()
+            .type(Insight.InsightType.SPENDING_YOUR_RAISE)
+            .title("You're Spending Your Raise")
+            .description(String.format(
+                "Your income grew %.1f%% this year, but your spending grew %.1f%%. " +
+                "Your spending is outpacing your income by %.1f percentage points.",
+                incomeGrowthPct, spendGrowthPct, gap))
+            .actionText("Review your discretionary spending. The goal is to save at least half of every raise.")
+            .impactAmount(extraMonthlySpend.multiply(BigDecimal.valueOf(12)))
+            .severity(Insight.InsightSeverity.WARNING)
+            .build()));
+    }
+
+    private BigDecimal safe(BigDecimal v) {
+        return v != null ? v : BigDecimal.ZERO;
     }
 }

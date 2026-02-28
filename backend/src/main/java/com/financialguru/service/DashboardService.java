@@ -3,6 +3,7 @@ package com.financialguru.service;
 import com.financialguru.dto.response.AccountResponse;
 import com.financialguru.dto.response.DashboardResponse;
 import com.financialguru.model.Account;
+import com.financialguru.model.FinancialProfile;
 import com.financialguru.model.Subscription;
 import com.financialguru.model.Statement;
 import com.financialguru.repository.AccountRepository;
@@ -29,6 +30,19 @@ public class DashboardService {
     private final TransactionRepository transactionRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final AlertService alertService;
+    private final FinancialProfileService financialProfileService;
+
+    // Category bucket mappings
+    private static final List<String> THINGS_CATEGORIES = List.of(
+        "SHOPPING", "CLOTHING", "ELECTRONICS", "HOME_IMPROVEMENT", "PERSONAL_CARE", "HOBBIES"
+    );
+    private static final List<String> EXPERIENCES_CATEGORIES = List.of(
+        "RESTAURANTS", "DINING", "FOOD", "ENTERTAINMENT", "TRAVEL", "RECREATION", "FITNESS", "EVENTS"
+    );
+    private static final List<String> NECESSITIES_CATEGORIES = List.of(
+        "RENT", "MORTGAGE", "HOUSING", "UTILITIES", "INSURANCE", "HEALTHCARE", "MEDICAL",
+        "GAS", "AUTO", "TRANSPORTATION", "GROCERIES", "PHONE", "INTERNET", "CHILDCARE"
+    );
 
     public DashboardResponse getDashboard() {
         List<Account> activeAccounts = accountRepository.findByIsActiveTrueOrderByCreatedAtDesc();
@@ -65,13 +79,12 @@ public class DashboardService {
 
         BigDecimal totalAvailableCredit = totalCreditLimit.subtract(totalCreditCardBalance);
 
-        // Monthly spending — use first active credit card account as proxy (or aggregate all)
+        // Monthly dates
         LocalDate now = LocalDate.now();
         LocalDate startOfMonth = now.withDayOfMonth(1);
         LocalDate startOfLastMonth = now.minusMonths(1).withDayOfMonth(1);
         LocalDate endOfLastMonth = now.withDayOfMonth(1).minusDays(1);
 
-        // Use global queries so transactions without an account are also counted
         BigDecimal currentMonthSpend = getGlobalSpending(startOfMonth, now);
         BigDecimal lastMonthSpend = getGlobalSpending(startOfLastMonth, endOfLastMonth);
 
@@ -82,8 +95,7 @@ public class DashboardService {
                 .multiply(BigDecimal.valueOf(100));
         }
 
-        // Monthly trend and breakdowns — global so unlinked transactions are included
-        // Use YTD (year-to-date) for categories so all uploaded data is visible
+        // YTD breakdowns
         LocalDate ytdStart = now.withDayOfYear(1);
         List<Map<String, Object>> monthlyTrend = buildMonthlyTrend();
         List<Map<String, Object>> categoryBreakdown = buildCategoryBreakdown(ytdStart, now);
@@ -104,11 +116,55 @@ public class DashboardService {
             })
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Upcoming payments
+        // Upcoming payments and expiring promos
         List<Map<String, Object>> upcomingPayments = buildUpcomingPayments(activeAccounts);
-
-        // Expiring promo APRs
         List<Map<String, Object>> expiringPromoAprs = buildExpiringPromoAprs(activeAccounts);
+
+        // ── Wealth Advisor KPIs ──────────────────────────────────────────────
+        BigDecimal estimatedIncome = detectMonthlyIncome(startOfMonth, now);
+
+        // Savings rate this month
+        BigDecimal savingsRate = BigDecimal.ZERO;
+        if (estimatedIncome.compareTo(BigDecimal.ZERO) > 0 && currentMonthSpend.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal saved = estimatedIncome.subtract(currentMonthSpend);
+            savingsRate = saved.divide(estimatedIncome, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+        }
+
+        // 6-month avg savings rate
+        BigDecimal avgSavingsRate = compute6MonthAvgSavingsRate();
+
+        // Years to retirement using Mr. Money Mustache's table (5% real returns)
+        Integer yearsToRetirement = computeYearsToRetirement(avgSavingsRate);
+
+        // Freedom months = liquid assets / monthly expenses
+        BigDecimal liquidAssets = totalCheckingBalance.add(totalSavingsBalance);
+        BigDecimal avgMonthlyExpenses = currentMonthSpend.compareTo(BigDecimal.ZERO) > 0
+            ? currentMonthSpend : lastMonthSpend;
+        BigDecimal freedomMonths = BigDecimal.ZERO;
+        if (avgMonthlyExpenses.compareTo(BigDecimal.ZERO) > 0) {
+            freedomMonths = liquidAssets.divide(avgMonthlyExpenses, 2, RoundingMode.HALF_UP);
+        }
+
+        // Freedom trend = net cash flow this month (positive = runway growing)
+        BigDecimal freedomTrend = estimatedIncome.subtract(currentMonthSpend);
+
+        // Material (Things) spend
+        BigDecimal materialThisMonth = safe(transactionRepository.sumCategoriesSpending(
+            THINGS_CATEGORIES, startOfMonth, now));
+        BigDecimal materialLastMonth = safe(transactionRepository.sumCategoriesSpending(
+            THINGS_CATEGORIES, startOfLastMonth, endOfLastMonth));
+
+        // Things / Experiences / Necessities breakdown this month
+        BigDecimal thingsSpend = materialThisMonth;
+        BigDecimal experiencesSpend = safe(transactionRepository.sumCategoriesSpending(
+            EXPERIENCES_CATEGORIES, startOfMonth, now));
+        BigDecimal necessitiesSpend = safe(transactionRepository.sumCategoriesSpending(
+            NECESSITIES_CATEGORIES, startOfMonth, now));
+
+        // Paycheck breakdown
+        List<Map<String, Object>> paycheckBreakdown = buildPaycheckBreakdown(
+            estimatedIncome, categoryBreakdown);
 
         return DashboardResponse.builder()
             .totalCreditCardBalance(totalCreditCardBalance)
@@ -131,7 +187,26 @@ public class DashboardService {
             .monthlySubscriptionCost(monthlySubCost)
             .activeSubscriptionCount(activeSubs.size())
             .duplicateSubscriptionCount(duplicateSubs.size())
+            // Wealth KPIs
+            .estimatedMonthlyIncome(estimatedIncome)
+            .monthlySavingsRate(savingsRate)
+            .avgSavingsRate6Month(avgSavingsRate)
+            .yearsToRetirementAtCurrentRate(yearsToRetirement)
+            .freedomMonths(freedomMonths)
+            .freedomMonthsTrend(freedomTrend)
+            .materialSpendThisMonth(materialThisMonth)
+            .materialSpendLastMonth(materialLastMonth)
+            .thingsSpend(thingsSpend)
+            .experiencesSpend(experiencesSpend)
+            .necessitiesSpend(necessitiesSpend)
+            .paycheckBreakdown(paycheckBreakdown)
             .build();
+    }
+
+    // ── private helpers ──────────────────────────────────────────────────────
+
+    private BigDecimal safe(BigDecimal v) {
+        return v != null ? v : BigDecimal.ZERO;
     }
 
     private BigDecimal getGlobalSpending(LocalDate start, LocalDate end) {
@@ -139,16 +214,75 @@ public class DashboardService {
         return result != null ? result : BigDecimal.ZERO;
     }
 
+    /**
+     * Auto-detect monthly income: use profile if set, else sum CREDIT transactions >= $200.
+     */
+    private BigDecimal detectMonthlyIncome(LocalDate start, LocalDate end) {
+        try {
+            FinancialProfile profile = financialProfileService.getOrCreateProfile();
+            if (profile.getMonthlyIncome() != null && profile.getMonthlyIncome().compareTo(BigDecimal.ZERO) > 0) {
+                return profile.getMonthlyIncome();
+            }
+        } catch (Exception ignored) {}
+        BigDecimal detected = transactionRepository.sumIncomeAmount(
+            new BigDecimal("200"), start, end);
+        return detected != null ? detected : BigDecimal.ZERO;
+    }
+
+    /**
+     * Compute average savings rate over last 6 full months.
+     */
+    private BigDecimal compute6MonthAvgSavingsRate() {
+        LocalDate now = LocalDate.now();
+        BigDecimal totalRate = BigDecimal.ZERO;
+        int monthsWithData = 0;
+
+        for (int i = 1; i <= 6; i++) {
+            LocalDate start = now.minusMonths(i).withDayOfMonth(1);
+            LocalDate end = now.minusMonths(i - 1).withDayOfMonth(1).minusDays(1);
+            BigDecimal spend = getGlobalSpending(start, end);
+            BigDecimal income = detectMonthlyIncome(start, end);
+            if (income.compareTo(BigDecimal.ZERO) > 0 && spend.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal rate = income.subtract(spend)
+                    .divide(income, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100));
+                totalRate = totalRate.add(rate);
+                monthsWithData++;
+            }
+        }
+
+        if (monthsWithData == 0) return BigDecimal.ZERO;
+        return totalRate.divide(BigDecimal.valueOf(monthsWithData), 1, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Estimate years to retirement using Mr. Money Mustache's savings rate table.
+     * Based on 5% real investment returns, starting from near-zero savings.
+     * Returns null if savings rate <= 0.
+     */
+    private Integer computeYearsToRetirement(BigDecimal savingsRate) {
+        if (savingsRate == null || savingsRate.compareTo(BigDecimal.ZERO) <= 0) return null;
+        double sr = savingsRate.doubleValue() / 100.0;
+        if (sr >= 1.0) return 0;
+        // Spending fraction = 1 - sr
+        // At 5% real returns, years = ln((1/sr)) / ln(1.05)
+        // (rough approximation of the classic table)
+        double spendFraction = 1.0 - sr;
+        double years = Math.log(1.0 / sr) / Math.log(1.05) * spendFraction;
+        // Clamp to reasonable range
+        if (years < 0) return 0;
+        if (years > 100) return null;
+        return (int) Math.round(years);
+    }
+
     private List<Map<String, Object>> buildMonthlyTrend() {
         List<Map<String, Object>> trend = new ArrayList<>();
         LocalDate now = LocalDate.now();
 
-        // Build a map from query results
         Map<String, BigDecimal> trendMap = new LinkedHashMap<>();
         transactionRepository.findAllMonthlySpendingTrend(now.minusMonths(5).withDayOfMonth(1))
             .forEach(row -> trendMap.put((String) row[0], (BigDecimal) row[1]));
 
-        // Fill in all 6 months (including months with 0 spend)
         for (int i = 5; i >= 0; i--) {
             LocalDate month = now.minusMonths(i);
             String key = month.getYear() + "-" + String.format("%02d", month.getMonthValue());
@@ -194,6 +328,40 @@ public class DashboardService {
             .collect(Collectors.toList());
     }
 
+    /**
+     * Build paycheck breakdown: for each category, compute % of estimated income.
+     * Includes a "bucket" field: THINGS / EXPERIENCES / NECESSITIES / OTHER.
+     */
+    private List<Map<String, Object>> buildPaycheckBreakdown(
+            BigDecimal estimatedIncome,
+            List<Map<String, Object>> categoryBreakdown) {
+
+        if (estimatedIncome.compareTo(BigDecimal.ZERO) == 0) return List.of();
+
+        return categoryBreakdown.stream().map(cat -> {
+            String category = (String) cat.get("category");
+            BigDecimal amount = (BigDecimal) cat.get("amount");
+            BigDecimal pctOfIncome = amount.divide(estimatedIncome, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+            String bucket = categorizeBucket(category);
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("label", category);
+            m.put("amount", amount);
+            m.put("pctOfIncome", pctOfIncome);
+            m.put("bucket", bucket);
+            return m;
+        }).collect(Collectors.toList());
+    }
+
+    private String categorizeBucket(String category) {
+        if (category == null) return "OTHER";
+        String upper = category.toUpperCase();
+        if (THINGS_CATEGORIES.stream().anyMatch(upper::contains)) return "THINGS";
+        if (EXPERIENCES_CATEGORIES.stream().anyMatch(upper::contains)) return "EXPERIENCES";
+        if (NECESSITIES_CATEGORIES.stream().anyMatch(upper::contains)) return "NECESSITIES";
+        return "OTHER";
+    }
+
     private List<Map<String, Object>> buildUpcomingPayments(List<Account> accounts) {
         LocalDate today = LocalDate.now();
         List<Map<String, Object>> payments = new ArrayList<>();
@@ -204,20 +372,16 @@ public class DashboardService {
             LocalDate dueDate = null;
             BigDecimal minPayment = a.getMinPayment();
 
-            // Step 1: pull min payment hint from most recent statement
             List<Statement> stmts = statementRepository.findCompletedByAccountId(a.getId());
             if (!stmts.isEmpty()) {
                 Statement latest = stmts.get(0);
                 if (minPayment == null) minPayment = latest.getMinimumPayment();
-                // Use statement due date only if it is still in the future
                 LocalDate stmtDue = latest.getPaymentDueDate();
                 if (stmtDue != null && !stmtDue.isBefore(today)) {
                     dueDate = stmtDue;
                 }
             }
 
-            // Step 2: if no future statement due date, compute next occurrence from paymentDueDay
-            // This keeps the reminder recurring every month automatically.
             if (dueDate == null && a.getPaymentDueDay() != null) {
                 int day = a.getPaymentDueDay();
                 LocalDate candidate = today.withDayOfMonth(Math.min(day, today.lengthOfMonth()));

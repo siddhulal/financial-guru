@@ -41,4 +41,18 @@ public class DashboardResponse {
     private BigDecimal monthlySubscriptionCost;
     private int activeSubscriptionCount;
     private int duplicateSubscriptionCount;
+
+    // Wealth Advisor KPIs
+    private BigDecimal estimatedMonthlyIncome;
+    private BigDecimal monthlySavingsRate;        // (income - spend) / income * 100
+    private BigDecimal avgSavingsRate6Month;       // avg over last 6 months
+    private Integer yearsToRetirementAtCurrentRate; // simple projection, null if no data
+    private BigDecimal freedomMonths;             // liquid assets / monthly expenses
+    private BigDecimal freedomMonthsTrend;        // this month net cash flow (positive = growing)
+    private BigDecimal materialSpendThisMonth;    // SHOPPING + CLOTHING + ELECTRONICS this month
+    private BigDecimal materialSpendLastMonth;    // same for last month
+    private BigDecimal thingsSpend;               // material goods this month
+    private BigDecimal experiencesSpend;          // dining + travel + entertainment this month
+    private BigDecimal necessitiesSpend;          // housing + utilities + transport this month
+    private List<Map<String, Object>> paycheckBreakdown; // [{label, amount, pctOfIncome, bucket}]
 }

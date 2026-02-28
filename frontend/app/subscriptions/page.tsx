@@ -78,6 +78,23 @@ export default function SubscriptionsPage() {
         </div>
       </div>
 
+      {/* Subscription regret callout */}
+      {totalAnnual > 0 && (
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+          <div className="text-amber-400 text-lg">⚠️</div>
+          <div>
+            <p className="text-sm font-semibold text-amber-400">
+              You're spending {formatCurrency(totalAnnual)}/year on subscriptions
+            </p>
+            <p className="text-xs text-text-muted mt-0.5">
+              If you cut half and invested it for 10 years: <span className="text-gold-500 font-mono font-semibold">
+                {formatCurrency(totalAnnual * 0.5 * ((Math.pow(1.07, 10) - 1) / 0.07) / 12 * 12)}
+              </span> at retirement
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Duplicate warning */}
       {duplicates.length > 0 && (
         <div className="glass-card rounded-xl p-4 border border-orange-500/30 bg-orange-500/5">
@@ -149,6 +166,16 @@ export default function SubscriptionsPage() {
                           {s.category && (
                             <p className="text-xs text-text-muted">{s.category}</p>
                           )}
+                          {/* 60-day unused warning */}
+                          {s.lastChargedDate && (() => {
+                            const daysSince = Math.floor((Date.now() - new Date(s.lastChargedDate).getTime()) / (1000 * 60 * 60 * 24))
+                            if (daysSince < 60) return null
+                            return (
+                              <div className="mt-2 px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                                ⚠️ You've paid {formatCurrency((s.annualCost || 0) / 12 * Math.floor(daysSince / 30))} for something you haven't used in {Math.floor(daysSince / 30)} months
+                              </div>
+                            )
+                          })()}
                         </div>
                       </div>
                     </td>

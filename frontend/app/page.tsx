@@ -9,6 +9,8 @@ import { CategoryDonut } from '@/components/dashboard/CategoryDonut'
 import { AlertSummary } from '@/components/dashboard/AlertSummary'
 import { DueDateTimeline } from '@/components/dashboard/DueDateTimeline'
 import { AccountCards } from '@/components/dashboard/AccountCards'
+import { WealthKPIWidget } from '@/components/dashboard/WealthKPIWidget'
+import { PaycheckBreakdown } from '@/components/dashboard/PaycheckBreakdown'
 import { formatCurrency } from '@/lib/utils'
 import { RefreshCw } from 'lucide-react'
 
@@ -82,6 +84,9 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {/* 3-Number Wealth Dashboard */}
+      <WealthKPIWidget data={data} />
+
       {/* Promo APR warnings */}
       {data.expiringPromoAprs.length > 0 && (
         <div className="glass-card rounded-xl p-4 border-yellow-500/30 bg-yellow-500/5">
@@ -117,6 +122,9 @@ export default function DashboardPage() {
         <DueDateTimeline payments={data.upcomingPayments} />
         <AccountCards accounts={data.accounts} />
       </div>
+
+      {/* Paycheck Breakdown */}
+      {data.estimatedMonthlyIncome > 0 && <PaycheckBreakdown data={data} />}
 
       {/* Top merchants */}
       {data.topMerchants.length > 0 && (

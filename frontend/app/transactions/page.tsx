@@ -6,6 +6,14 @@ import { Transaction, Page, Account } from '@/lib/types'
 import { formatCurrency, formatDate, getCategoryEmoji, cn } from '@/lib/utils'
 import { Search, Filter, Download, AlertTriangle, RefreshCw, CheckSquare, Square, Tag } from 'lucide-react'
 
+function opportunityCost(monthlyAmount: number, years = 25, rate = 0.07): string {
+  const monthly = monthlyAmount
+  const future = monthly * ((Math.pow(1 + rate / 12, years * 12) - 1) / (rate / 12))
+  if (future < 1000) return ''
+  if (future >= 1000000) return `$${(future / 1000000).toFixed(1)}M in ${years}yr`
+  return `$${(future / 1000).toFixed(0)}K in ${years}yr`
+}
+
 const CATEGORIES = [
   'Dining', 'Groceries', 'Shopping', 'Travel', 'Gas', 'Entertainment',
   'Utilities', 'Healthcare', 'Subscriptions', 'Education', 'Personal Care',
@@ -333,6 +341,7 @@ export default function TransactionsPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Account</th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Amount</th>
                   <th className="text-center px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Status</th>
+                  <th className="text-right px-3 py-3 text-xs font-medium text-text-muted uppercase tracking-wider hidden lg:table-cell">If Invested</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -482,6 +491,13 @@ function TransactionRow({
         ) : t.isRecurring ? (
           <span className="text-xs text-blue-400/70">Recurring</span>
         ) : null}
+      </td>
+      <td className="text-right px-3 py-3 hidden lg:table-cell">
+        {t.type === 'DEBIT' && t.amount >= 50 && (
+          <span className="text-xs text-text-muted/60 font-mono">
+            {opportunityCost(t.amount, 25)}
+          </span>
+        )}
       </td>
     </tr>
   )

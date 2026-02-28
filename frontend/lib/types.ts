@@ -162,6 +162,19 @@ export interface DashboardData {
   monthlySubscriptionCost: number
   activeSubscriptionCount: number
   duplicateSubscriptionCount: number
+  // Wealth Advisor KPIs
+  estimatedMonthlyIncome: number
+  monthlySavingsRate: number
+  avgSavingsRate6Month: number
+  yearsToRetirementAtCurrentRate: number | null
+  freedomMonths: number
+  freedomMonthsTrend: number
+  materialSpendThisMonth: number
+  materialSpendLastMonth: number
+  thingsSpend: number
+  experiencesSpend: number
+  necessitiesSpend: number
+  paycheckBreakdown: { label: string; amount: number; pctOfIncome: number; bucket: 'THINGS' | 'EXPERIENCES' | 'NECESSITIES' | 'OTHER' }[]
 }
 
 // Pagination

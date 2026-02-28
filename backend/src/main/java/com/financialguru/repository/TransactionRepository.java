@@ -236,4 +236,28 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
         ORDER BY t.transactionDate DESC
         """)
     List<Transaction> searchTransactions(@Param("query") String query, Pageable pageable);
+
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM Transaction t
+        WHERE t.category IN :categories
+          AND t.type = 'DEBIT'
+          AND t.transactionDate BETWEEN :start AND :end
+        """)
+    BigDecimal sumCategoriesSpending(
+        @Param("categories") List<String> categories,
+        @Param("start") LocalDate start,
+        @Param("end") LocalDate end);
+
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM Transaction t
+        WHERE t.type IN ('CREDIT', 'PAYMENT')
+          AND t.amount >= :minAmount
+          AND t.transactionDate BETWEEN :start AND :end
+        """)
+    BigDecimal sumIncomeAmount(
+        @Param("minAmount") BigDecimal minAmount,
+        @Param("start") LocalDate start,
+        @Param("end") LocalDate end);
 }
