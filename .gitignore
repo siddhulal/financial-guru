@@ -1,0 +1,17 @@
+# Backend
+backend/target/
+backend/uploads/
+backend/*.log
+/tmp/backend*.log
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+
+# General
+.env
+*.class
+*.jar
+!*-exec.jar
+.DS_Store
