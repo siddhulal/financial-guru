@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.MonthDay;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -29,6 +30,13 @@ import java.util.regex.Pattern;
 @Component
 @Slf4j
 public class CapitalOneParser extends GenericPdfParser {
+
+    // ── NEW: "Feb 14 Feb 14 AMAZON MKTPL*FY3737CG3 SEATTLEWA $10.70"
+    // ──      "Feb 14 Feb 14 CAPITAL ONE AUTOPAY PYMT - $63.00"
+    // Two short dates (no year), description, optional "- " prefix on amount
+    private static final Pattern CAP1_TXN_TWO_DATES = Pattern.compile(
+        "^([A-Z][a-z]{2}\\s+\\d{1,2})\\s+[A-Z][a-z]{2}\\s+\\d{1,2}\\s+(.+?)\\s+(-\\s*\\$[\\d,]+\\.\\d{2}|\\$[\\d,]+\\.\\d{2})\\s*$"
+    );
 
     // Primary: "Jan. 15, 2026  description  $amount"
     private static final Pattern CAP1_TXN_FULL = Pattern.compile(
@@ -54,6 +62,10 @@ public class CapitalOneParser extends GenericPdfParser {
         DateTimeFormatter.ofPattern("M/d/yy")
     );
 
+    // Short date (no year): "Feb 14" → need to combine with statement year
+    private static final DateTimeFormatter SHORT_DATE_FMT =
+        DateTimeFormatter.ofPattern("MMM d", Locale.US);
+
     // ── Statement period ──────────────────────────────────────────────────────
     // "BILLING PERIOD  MM/DD/YY - MM/DD/YY" or "Statement Period: Jan 1, 2026 - Jan 31, 2026"
     private static final Pattern PERIOD_SLASH = Pattern.compile(
@@ -61,6 +73,10 @@ public class CapitalOneParser extends GenericPdfParser {
     );
     private static final Pattern PERIOD_MONTH = Pattern.compile(
         "(?i)(?:billing\\s+period|statement\\s+period)[:\\s]+([A-Z][a-z]{2}\\.?\\s+\\d{1,2},\\s+\\d{4})\\s*[-–]\\s*([A-Z][a-z]{2}\\.?\\s+\\d{1,2},\\s+\\d{4})"
+    );
+    // NEW: header-style period "Jan 21, 2026 - Feb 17, 2026   |  28 days in Billing Cycle"
+    private static final Pattern PERIOD_HEADER = Pattern.compile(
+        "([A-Z][a-z]{2}\\s+\\d{1,2},\\s+\\d{4})\\s*[-–]\\s*([A-Z][a-z]{2}\\s+\\d{1,2},\\s+\\d{4})\\s*\\|"
     );
 
     // ── Account info ──────────────────────────────────────────────────────────
@@ -214,28 +230,47 @@ public class CapitalOneParser extends GenericPdfParser {
 
             // Skip obvious header/footer lines
             String lower = line.toLowerCase();
-            if (lower.startsWith("trans") || lower.startsWith("post") ||
+            if (lower.startsWith("trans date") || lower.startsWith("post date") ||
                 lower.startsWith("date") || lower.startsWith("description") ||
-                lower.contains("page ") || lower.contains("continued")) continue;
+                lower.contains("page ") || lower.contains("continued") ||
+                lower.contains("total fees") || lower.contains("total interest") ||
+                lower.contains("interest charge on") || lower.contains("year-to-date") ||
+                lower.contains("total transactions")) continue;
 
-            Matcher m = CAP1_TXN_FULL.matcher(line);
+            Matcher m;
             String dateStr, desc, amtStr;
+            boolean shortDate = false;
+
+            // 1. NEW two-date format: "Feb 14 Feb 14 AMAZON MKTPL $10.70"
+            m = CAP1_TXN_TWO_DATES.matcher(line);
             if (m.matches()) {
-                dateStr = m.group(1);
-                desc    = m.group(2).trim();
-                amtStr  = m.group(3);
-            } else {
-                m = CAP1_TXN_DATE.matcher(line);
+                dateStr   = m.group(1); // trans date only, e.g. "Feb 14"
+                desc      = m.group(2).trim();
+                amtStr    = m.group(3);
+                shortDate = true;
+            }
+            // 2. Full date with year: "Jan. 15, 2026  description  $amount"
+            else {
+                m = CAP1_TXN_FULL.matcher(line);
                 if (m.matches()) {
                     dateStr = m.group(1);
                     desc    = m.group(2).trim();
                     amtStr  = m.group(3);
                 } else {
-                    m = CAP1_TXN_LOOSE.matcher(line);
-                    if (!m.matches()) continue;
-                    dateStr = m.group(1);
-                    desc    = m.group(2).trim();
-                    amtStr  = m.group(3);
+                    // 3. Slash date: "01/15/2026  description  $amount"
+                    m = CAP1_TXN_DATE.matcher(line);
+                    if (m.matches()) {
+                        dateStr = m.group(1);
+                        desc    = m.group(2).trim();
+                        amtStr  = m.group(3);
+                    } else {
+                        // 4. Loose fallback
+                        m = CAP1_TXN_LOOSE.matcher(line);
+                        if (!m.matches()) continue;
+                        dateStr = m.group(1);
+                        desc    = m.group(2).trim();
+                        amtStr  = m.group(3);
+                    }
                 }
             }
 
@@ -243,20 +278,29 @@ public class CapitalOneParser extends GenericPdfParser {
                 if (desc.equalsIgnoreCase("description") || desc.equalsIgnoreCase("amount")) continue;
                 if (desc.toLowerCase().startsWith("total ") || desc.toLowerCase().startsWith("new balance")) continue;
 
-                LocalDate date = parseCap1Date(dateStr);
+                // Parse date — short dates need year from billing period
+                LocalDate date;
+                if (shortDate) {
+                    date = parseShortDate(dateStr, period[1]);
+                } else {
+                    date = parseCap1Date(dateStr);
+                }
                 if (date == null) continue;
 
-                BigDecimal amount = parseAmount(amtStr.replace("$", ""));
+                // Normalize amount: "- $63.00" → "-63.00",  "$10.70" → "10.70"
+                String normalizedAmt = amtStr.replace("$", "").replace(" ", "").trim();
+                BigDecimal amount = parseAmount(normalizedAmt);
 
                 Transaction.TransactionType type;
                 String descUpper = desc.toUpperCase();
+                String descLower = desc.toLowerCase();
                 if (descUpper.contains("PAYMENT") || descUpper.contains("AUTOPAY") ||
                     descUpper.contains("CREDIT ADJUSTMENT") || descUpper.contains("REFUND") ||
                     amount.compareTo(BigDecimal.ZERO) < 0) {
                     type = Transaction.TransactionType.CREDIT;
-                } else if (lower.contains("interest charge")) {
+                } else if (descLower.contains("interest charge")) {
                     type = Transaction.TransactionType.INTEREST;
-                } else if (lower.contains(" fee")) {
+                } else if (descLower.contains(" fee")) {
                     type = Transaction.TransactionType.FEE;
                 } else {
                     type = Transaction.TransactionType.DEBIT;
@@ -306,23 +350,56 @@ public class CapitalOneParser extends GenericPdfParser {
     }
 
     private LocalDate[] detectPeriod(String text, Statement statement) {
+        // Try slash format first
         Matcher m = PERIOD_SLASH.matcher(text);
         if (m.find()) {
             LocalDate start = parseCap1Date(m.group(1));
             LocalDate end   = parseCap1Date(m.group(2));
             if (start != null && end != null) return new LocalDate[]{start, end};
         }
+        // Try explicit "Billing Period:" label
         m = PERIOD_MONTH.matcher(text);
         if (m.find()) {
             LocalDate start = parseCap1Date(m.group(1));
             LocalDate end   = parseCap1Date(m.group(2));
             if (start != null && end != null) return new LocalDate[]{start, end};
         }
+        // NEW: header-style "Jan 21, 2026 - Feb 17, 2026   |  28 days in Billing Cycle"
+        m = PERIOD_HEADER.matcher(text);
+        if (m.find()) {
+            LocalDate start = parseCap1Date(m.group(1));
+            LocalDate end   = parseCap1Date(m.group(2));
+            if (start != null && end != null) {
+                log.info("CapitalOne: detected period from header: {} to {}", start, end);
+                return new LocalDate[]{start, end};
+            }
+        }
         if (statement.getStartDate() != null && statement.getEndDate() != null) {
             return new LocalDate[]{statement.getStartDate(), statement.getEndDate()};
         }
         LocalDate now = LocalDate.now();
         return new LocalDate[]{now.minusDays(30), now};
+    }
+
+    /**
+     * Converts a short date like "Feb 14" to a full LocalDate by combining with the statement year.
+     * Handles cross-year billing periods (e.g. Dec → Jan): if the short month is later in the
+     * year than the period end month, the transaction belongs to the previous year.
+     */
+    private LocalDate parseShortDate(String shortDate, LocalDate periodEnd) {
+        try {
+            // Parse just month+day
+            MonthDay md = MonthDay.parse(shortDate.trim(), SHORT_DATE_FMT);
+            int year = periodEnd.getYear();
+            // Cross-year: Dec transaction in a Jan-ending period → previous year
+            if (md.getMonthValue() > periodEnd.getMonthValue() + 1) {
+                year = year - 1;
+            }
+            return md.atYear(year);
+        } catch (Exception e) {
+            log.debug("CapitalOne: could not parse short date '{}': {}", shortDate, e.getMessage());
+            return null;
+        }
     }
 
     private void extractPaymentSummary(String pdfText, Statement statement) {
