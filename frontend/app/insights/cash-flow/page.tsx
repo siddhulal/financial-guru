@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, AlertTriangle, Info } from 'lucide-react'
 import { api } from '@/lib/api'
 import { CashFlowResponse, CashFlowEvent } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -150,6 +150,35 @@ export default function CashFlowPage() {
         )}
       </div>
 
+      {/* Setup warnings */}
+      {data && (() => {
+        const hasIncome = data.events.some(e => e.type === 'INCOME')
+        const hasBalance = data.startingBalance > 0
+        if (!hasIncome || !hasBalance) return (
+          <div className="space-y-2">
+            {!hasBalance && (
+              <div className="flex items-start gap-3 p-3 bg-yellow-500/8 border border-yellow-500/20 rounded-lg text-sm">
+                <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <p className="text-text-muted">
+                  <span className="text-yellow-400 font-medium">Starting balance is $0.</span>{' '}
+                  Go to <strong>Accounts</strong> and set your checking account's current balance so the chart starts from your real balance.
+                </p>
+              </div>
+            )}
+            {!hasIncome && (
+              <div className="flex items-start gap-3 p-3 bg-blue-500/8 border border-blue-500/20 rounded-lg text-sm">
+                <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <p className="text-text-muted">
+                  <span className="text-blue-400 font-medium">No income events found.</span>{' '}
+                  Go to <strong>Budget → Profile</strong> and set your monthly income + pay frequency so paychecks appear on the calendar.
+                </p>
+              </div>
+            )}
+          </div>
+        )
+        return null
+      })()}
+
       {/* Calendar */}
       <div className="bg-background-secondary rounded-xl border border-border p-4">
         {/* Day headers */}
@@ -242,7 +271,12 @@ export default function CashFlowPage() {
                   label={{ value: 'Day', position: 'insideBottomRight', offset: -5, fill: '#6B7280', fontSize: 10 }}
                 />
                 <YAxis
-                  tickFormatter={v => '$' + (v / 1000).toFixed(0) + 'K'}
+                  tickFormatter={v => {
+                    const abs = Math.abs(v)
+                    const sign = v < 0 ? '-' : ''
+                    if (abs >= 1000) return `${sign}$${(abs / 1000).toFixed(1)}K`
+                    return `${sign}$${abs.toFixed(0)}`
+                  }}
                   tick={{ fill: '#6B7280', fontSize: 11 }}
                   stroke="#ffffff10"
                 />
