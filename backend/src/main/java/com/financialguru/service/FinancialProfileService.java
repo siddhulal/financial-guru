@@ -42,6 +42,9 @@ public class FinancialProfileService {
         if (req.getPayFrequency() != null) p.setPayFrequency(req.getPayFrequency());
         if (req.getEmergencyFundTargetMonths() != null) p.setEmergencyFundTargetMonths(req.getEmergencyFundTargetMonths());
         if (req.getNotes() != null) p.setNotes(req.getNotes());
+        if (req.getAge() != null) p.setAge(req.getAge());
+        if (req.getTargetRetirementAge() != null) p.setTargetRetirementAge(req.getTargetRetirementAge());
+        if (req.getCurrentInvestments() != null) p.setCurrentInvestments(req.getCurrentInvestments());
         return financialProfileRepository.save(p);
     }
 

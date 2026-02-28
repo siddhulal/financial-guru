@@ -69,6 +69,9 @@ export default function BudgetPage() {
   const [incomeInput, setIncomeInput] = useState('')
   const [payFrequency, setPayFrequency] = useState('Monthly')
   const [emergencyMonths, setEmergencyMonths] = useState(6)
+  const [ageInput, setAgeInput] = useState('')
+  const [targetRetirementAgeInput, setTargetRetirementAgeInput] = useState('65')
+  const [currentInvestmentsInput, setCurrentInvestmentsInput] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
   const [detectingIncome, setDetectingIncome] = useState(false)
 
@@ -80,6 +83,9 @@ export default function BudgetPage() {
         if (p.monthlyIncome !== null) setIncomeInput(String(p.monthlyIncome))
         setPayFrequency(p.payFrequency || 'Monthly')
         setEmergencyMonths(p.emergencyFundTargetMonths || 6)
+        if (p.age != null) setAgeInput(String(p.age))
+        if (p.targetRetirementAge != null) setTargetRetirementAgeInput(String(p.targetRetirementAge))
+        if (p.currentInvestments != null) setCurrentInvestmentsInput(String(p.currentInvestments))
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
@@ -129,6 +135,9 @@ export default function BudgetPage() {
         monthlyIncome: incomeInput ? parseFloat(incomeInput) : null,
         payFrequency,
         emergencyFundTargetMonths: emergencyMonths,
+        age: ageInput ? parseInt(ageInput, 10) : undefined,
+        targetRetirementAge: targetRetirementAgeInput ? parseInt(targetRetirementAgeInput, 10) : undefined,
+        currentInvestments: currentInvestmentsInput ? parseFloat(currentInvestmentsInput) : undefined,
       })
       setProfile(updated)
     } catch (e: unknown) {
@@ -299,6 +308,47 @@ export default function BudgetPage() {
                 <option key={f} value={f}>{f}</option>
               ))}
             </select>
+          </div>
+
+          {/* Age */}
+          <div className="space-y-2">
+            <label className="text-sm text-text-secondary font-medium">Your Age</label>
+            <input
+              type="number"
+              value={ageInput}
+              onChange={e => setAgeInput(e.target.value)}
+              placeholder="e.g. 30"
+              min={18}
+              max={100}
+              className="w-full bg-background-tertiary border border-border rounded-lg px-3 py-2 text-text-primary font-mono text-sm focus:outline-none focus:border-gold-500/50"
+            />
+          </div>
+
+          {/* Target Retirement Age */}
+          <div className="space-y-2">
+            <label className="text-sm text-text-secondary font-medium">Target Retirement Age</label>
+            <input
+              type="number"
+              value={targetRetirementAgeInput}
+              onChange={e => setTargetRetirementAgeInput(e.target.value)}
+              placeholder="e.g. 65"
+              min={40}
+              max={80}
+              className="w-full bg-background-tertiary border border-border rounded-lg px-3 py-2 text-text-primary font-mono text-sm focus:outline-none focus:border-gold-500/50"
+            />
+          </div>
+
+          {/* Current Investments */}
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-sm text-text-secondary font-medium">Current Investments (401k, IRA, Brokerage)</label>
+            <input
+              type="number"
+              value={currentInvestmentsInput}
+              onChange={e => setCurrentInvestmentsInput(e.target.value)}
+              placeholder="e.g. 50000"
+              min={0}
+              className="w-full bg-background-tertiary border border-border rounded-lg px-3 py-2 text-text-primary font-mono text-sm focus:outline-none focus:border-gold-500/50"
+            />
           </div>
 
           {/* Emergency Fund */}

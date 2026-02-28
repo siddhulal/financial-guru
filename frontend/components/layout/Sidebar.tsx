@@ -16,6 +16,7 @@ import {
   Lightbulb,
   Calendar,
   Sparkles,
+  Brain,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/subscriptions', label: 'Subscriptions', icon: RefreshCw },
   { href: '/advisor', label: 'AI Advisor', icon: MessageSquare },
   { href: '/advisor/savings-plan', label: 'Savings Planner', icon: Sparkles },
+  { href: '/advisor/brain', label: 'Financial Brain', icon: Brain },
   { href: '/budget', label: 'Budget', icon: Target },
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/digest', label: 'Digest', icon: Calendar },

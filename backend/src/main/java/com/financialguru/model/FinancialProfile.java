@@ -37,6 +37,17 @@ public class FinancialProfile {
     @Builder.Default
     private Integer emergencyFundTargetMonths = 6;
 
+    @Column(name = "age")
+    private Integer age;
+
+    @Column(name = "target_retirement_age")
+    @Builder.Default
+    private Integer targetRetirementAge = 65;
+
+    @Column(name = "current_investments", precision = 14, scale = 2)
+    @Builder.Default
+    private BigDecimal currentInvestments = BigDecimal.ZERO;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

@@ -3,6 +3,7 @@ import {
   Alert,
   AlertRule,
   AccountBalanceSnapshot,
+  BrainReportResponse,
   Budget,
   CashFlowResponse,
   AnnualReviewResponse,
@@ -269,4 +270,8 @@ export const api = {
     apiFetch<AccountBalanceSnapshot[]>(`/api/accounts/${accountId}/balance-history${days ? `?days=${days}` : ''}`),
 
   captureBalances: () => apiFetch<void>('/api/accounts/capture-balances', { method: 'POST' }),
+
+  brain: {
+    report: () => apiFetch<BrainReportResponse>('/api/brain'),
+  },
 }

@@ -16,4 +16,7 @@ public class FinancialProfileRequest {
     private String payFrequency;
     private Integer emergencyFundTargetMonths;
     private String notes;
+    private Integer age;
+    private Integer targetRetirementAge;
+    private BigDecimal currentInvestments;
 }

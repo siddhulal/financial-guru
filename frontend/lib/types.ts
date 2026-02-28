@@ -207,6 +207,9 @@ export interface FinancialProfile {
   incomeSource: string
   payFrequency: string
   emergencyFundTargetMonths: number
+  age?: number
+  targetRetirementAge?: number
+  currentInvestments?: number
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -545,4 +548,68 @@ export interface SavingsPlanResponse {
   aiAvailable: boolean
   recommendations: CategoryRecommendation[]
   spendingBreakdown: SpendingCategory[]
+}
+
+export interface AgeProjection {
+  age: number
+  year: number
+  portfolioValue: number
+}
+
+export interface ScenarioResult {
+  id: string
+  description: string
+  extraMonthly: number
+  projectedRetirementAge: number
+  yearsEarlier: number
+  portfolioAtTargetAge: number
+  headline: string
+  color: string
+}
+
+export interface CategoryInsight {
+  category: string
+  monthlyAvg: number
+  pctOfIncome: number
+  benchmarkPct: number
+  status: 'OVER' | 'OK' | 'GOOD'
+  annualCost: number
+  retirementImpact10yr: number
+}
+
+export interface ActionItem {
+  rank: number
+  title: string
+  detail: string
+  monthlyImpact: number
+  yearsEarlierRetirement: number
+  type: 'SPENDING' | 'SAVING' | 'INVESTING' | 'DEBT'
+}
+
+export interface BrainReportResponse {
+  age: number
+  targetRetirementAge: number
+  monthlyIncome: number
+  monthlySpend: number
+  monthlySavings: number
+  savingsRatePct: number
+  netWorth: number
+  currentInvestments: number
+  profileComplete: boolean
+  fiNumber: number
+  projectedCorpusAtTargetAge: number
+  projectedRetirementAge: number
+  onTrack: boolean
+  yearsEarlyOrLate: number
+  monthlyGapToTarget: number
+  retirementReadinessScore: number
+  retirementReadinessGrade: string
+  trajectoryHeadline: string
+  currentPathProjections: AgeProjection[]
+  optimalPathProjections: AgeProjection[]
+  scenarios: ScenarioResult[]
+  topCategories: CategoryInsight[]
+  actionRoadmap: ActionItem[]
+  aiNarrative: string
+  aiAvailable: boolean
 }
