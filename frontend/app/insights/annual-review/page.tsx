@@ -190,7 +190,12 @@ export default function AnnualReviewPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" horizontal={false} />
                 <XAxis
                   type="number"
-                  tickFormatter={v => '$' + (v / 1000).toFixed(0) + 'K'}
+                  tickFormatter={v => {
+                    const abs = Math.abs(v)
+                    const sign = v < 0 ? '-' : ''
+                    if (abs >= 1000) return `${sign}$${(abs / 1000).toFixed(1)}K`
+                    return `${sign}$${abs.toFixed(0)}`
+                  }}
                   tick={{ fill: '#6B7280', fontSize: 11 }}
                   stroke="#ffffff10"
                 />
