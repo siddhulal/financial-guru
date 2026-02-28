@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+  <rect width="120" height="60" rx="8" fill="#003B70"/>
+  <text x="60" y="42" font-family="Arial,sans-serif" font-size="30" font-weight="bold" fill="white" text-anchor="middle">citi</text>
+  <path d="M 80 8 Q 90 8 90 18" stroke="#E31837" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>

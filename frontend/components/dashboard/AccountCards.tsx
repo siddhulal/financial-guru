@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Account } from '@/lib/types'
 import { formatCurrency, formatPercent, getUtilizationColor } from '@/lib/utils'
 import { CreditCard } from 'lucide-react'
+import { BankLogo, getBankBgColor } from '@/components/shared/BankLogo'
 
 interface Props {
   accounts: Account[]
@@ -26,12 +27,20 @@ export function AccountCards({ accounts }: Props) {
               className="block group"
             >
               <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-gold-500/30 hover:bg-background-tertiary transition-all">
-                {/* Card icon with color */}
+                {/* Card mini chip with bank logo */}
                 <div
-                  className="w-10 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: account.color || '#1E1E2E' }}
+                  className="w-10 h-7 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
+                  style={{
+                    background: account.color
+                      ? `linear-gradient(135deg, ${account.color}, ${account.color}88)`
+                      : `linear-gradient(135deg, ${getBankBgColor(account.institution)}, ${getBankBgColor(account.institution)}88)`
+                  }}
                 >
-                  <CreditCard className="w-4 h-4 text-white/80" />
+                  {account.institution ? (
+                    <BankLogo institution={account.institution} size={18} white className="opacity-90" />
+                  ) : (
+                    <CreditCard className="w-4 h-4 text-white/80" />
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-0">

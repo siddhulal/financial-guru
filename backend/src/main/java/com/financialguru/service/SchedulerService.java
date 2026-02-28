@@ -22,6 +22,9 @@ public class SchedulerService {
     private final AccountRepository accountRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final AlertService alertService;
+    private final BudgetService budgetService;
+    private final InsightEngineService insightEngineService;
+    private final NetWorthService netWorthService;
 
     // Run daily at 8 AM
     @Scheduled(cron = "0 0 8 * * *")
@@ -144,5 +147,26 @@ public class SchedulerService {
                 );
             }
         }
+    }
+
+    // Check budgets daily at 8 PM
+    @Scheduled(cron = "0 0 20 * * ?")
+    public void checkBudgets() {
+        log.info("Running budget check...");
+        budgetService.checkAndAlertBudgets();
+    }
+
+    // Run insight engine daily at 2 AM
+    @Scheduled(cron = "0 0 2 * * ?")
+    public void runInsightEngine() {
+        log.info("Running insight engine...");
+        insightEngineService.runAll();
+    }
+
+    // Capture monthly net worth snapshot on the 1st of every month at 1 AM
+    @Scheduled(cron = "0 0 1 1 * ?")
+    public void captureMonthlyNetWorth() {
+        log.info("Capturing monthly net worth snapshot...");
+        netWorthService.captureSnapshot();
     }
 }

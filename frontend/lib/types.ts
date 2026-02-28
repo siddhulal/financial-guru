@@ -172,3 +172,166 @@ export interface Page<T> {
   number: number
   size: number
 }
+
+// Budget types
+export type BudgetStatus = 'GREEN' | 'YELLOW' | 'RED'
+
+export interface Budget {
+  id: string
+  category: string
+  monthlyLimit: number
+  actualSpend: number
+  percentUsed: number
+  status: BudgetStatus
+  projectedMonthEnd: number
+  isActive: boolean
+}
+
+// Financial Profile
+export interface FinancialProfile {
+  id: string
+  monthlyIncome: number | null
+  incomeSource: string
+  payFrequency: string
+  emergencyFundTargetMonths: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Health Score
+export interface ScorePillar {
+  name: string
+  score: number
+  maxScore: number
+  explanation: string
+}
+
+export interface HealthScoreResponse {
+  totalScore: number
+  grade: string
+  pillars: ScorePillar[]
+  emergencyFundMonths: number
+  emergencyFundTarget: number
+  utilizationPercent: number
+  savingsRate: number
+}
+
+// Debt Payoff
+export interface CardPayoffDetail {
+  accountId: string
+  accountName: string
+  currentBalance: number
+  apr: number
+  minPayment: number | null
+  payoffDate: string
+  interestPaid: number
+  payoffOrder: number
+}
+
+export interface PayoffStrategy {
+  strategy: string
+  totalMonths: number
+  payoffDate: string
+  totalInterest: number
+  totalPaid: number
+  cardOrder: CardPayoffDetail[]
+}
+
+export interface DebtPayoffResponse {
+  extraPayment: number
+  totalCurrentDebt: number
+  avalanche: PayoffStrategy
+  snowball: PayoffStrategy
+}
+
+export interface WhatIfDataPoint {
+  extraPayment: number
+  avalancheMonths: number
+  avalancheTotalInterest: number
+  avalanchePayoffDate: string
+  snowballMonths: number
+}
+
+// Net Worth
+export interface ManualAsset {
+  id: string
+  name: string
+  assetType: 'ASSET' | 'LIABILITY'
+  assetClass: 'REAL_ESTATE' | 'VEHICLE' | 'INVESTMENT' | 'LOAN' | 'RETIREMENT' | 'OTHER'
+  currentValue: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface NetWorthSnapshot {
+  id: string
+  snapshotDate: string
+  liquidAssets: number
+  creditCardDebt: number
+  manualAssets: number
+  manualLiabilities: number
+  netWorth: number
+  createdAt: string
+}
+
+export interface NetWorthResponse {
+  netWorth: number
+  liquidAssets: number
+  creditCardDebt: number
+  manualAssetsTotal: number
+  manualLiabilities: number
+  monthlyChange: number
+  yearlyChange: number
+  assets: ManualAsset[]
+}
+
+// Cash Flow
+export interface CashFlowEvent {
+  date: string
+  type: 'INCOME' | 'PAYMENT' | 'SUBSCRIPTION'
+  description: string
+  amount: number
+  runningBalance: number
+  isDangerDay: boolean
+}
+
+export interface CashFlowResponse {
+  year: number
+  month: number
+  startingBalance: number
+  events: CashFlowEvent[]
+}
+
+// Annual Review
+export interface AnnualReviewResponse {
+  year: number
+  totalSpending: number
+  estimatedIncome: number
+  savingsRate: number
+  interestPaid: number
+  feesPaid: number
+  subscriptionAnnualCost: number
+  netWorthChange: number
+  categoryBreakdown: { category: string; amount: number }[]
+  aiRecommendations: string[]
+}
+
+// Insight
+export type InsightType = 'PRICE_INCREASE' | 'DUPLICATE_CROSS_CARD' | 'SUBSCRIPTION_CREEP' | 'ATM_FEE_WASTE' | 'REWARDS_OPPORTUNITY' | 'CATEGORY_YOY_SPIKE' | 'BILL_INCREASE'
+export type InsightSeverity = 'INFO' | 'WARNING' | 'OPPORTUNITY' | 'CRITICAL'
+
+export interface Insight {
+  id: string
+  type: InsightType
+  title: string
+  description: string
+  actionText: string | null
+  impactAmount: number | null
+  severity: InsightSeverity
+  merchantName: string | null
+  category: string | null
+  isDismissed: boolean
+  generatedAt: string
+}

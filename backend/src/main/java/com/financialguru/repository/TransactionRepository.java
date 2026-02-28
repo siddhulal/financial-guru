@@ -125,4 +125,65 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     );
 
     List<Transaction> findByStatementId(UUID statementId);
+
+    @Query("""
+        SELECT t FROM Transaction t
+        WHERE t.type = 'CREDIT'
+          AND t.amount >= :minAmount
+          AND t.transactionDate >= :since
+          AND t.account.type = 'CHECKING'
+        ORDER BY t.transactionDate DESC
+        """)
+    List<Transaction> findPotentialIncomeTransactions(
+        @Param("minAmount") BigDecimal minAmount,
+        @Param("since") LocalDate since
+    );
+
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t
+        WHERE t.category = :category
+          AND t.type = 'DEBIT'
+          AND t.transactionDate >= :start
+          AND t.transactionDate <= :end
+        """)
+    BigDecimal sumCategorySpending(
+        @Param("category") String category,
+        @Param("start") LocalDate start,
+        @Param("end") LocalDate end
+    );
+
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t
+        WHERE t.merchantName = :merchant
+          AND t.type = 'DEBIT'
+          AND t.transactionDate >= :start
+          AND t.transactionDate <= :end
+        """)
+    BigDecimal sumMerchantSpending(
+        @Param("merchant") String merchant,
+        @Param("start") LocalDate start,
+        @Param("end") LocalDate end
+    );
+
+    @Query("""
+        SELECT t FROM Transaction t
+        WHERE t.merchantName = :merchant
+          AND t.type = 'DEBIT'
+          AND t.transactionDate >= :start
+          AND t.transactionDate <= :end
+        ORDER BY t.transactionDate DESC
+        """)
+    List<Transaction> findByMerchantAndDateRange(
+        @Param("merchant") String merchant,
+        @Param("start") LocalDate start,
+        @Param("end") LocalDate end
+    );
+
+    @Query("""
+        SELECT t FROM Transaction t
+        WHERE (t.type = 'FEE' OR UPPER(t.description) LIKE '%ATM%')
+          AND t.transactionDate >= :since
+        ORDER BY t.transactionDate DESC
+        """)
+    List<Transaction> findAllFeeTransactions(@Param("since") LocalDate since);
 }

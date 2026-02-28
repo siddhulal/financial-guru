@@ -61,7 +61,8 @@ public class Alert {
     public enum AlertType {
         DUE_DATE, APR_EXPIRY, DUPLICATE_CHARGE, ANOMALY,
         SUBSCRIPTION, HIGH_UTILIZATION, OVERCHARGE,
-        UNUSUAL_MERCHANT, LARGE_TRANSACTION
+        UNUSUAL_MERCHANT, LARGE_TRANSACTION,
+        BUDGET_WARNING, BUDGET_EXCEEDED
     }
 
     public enum AlertSeverity {

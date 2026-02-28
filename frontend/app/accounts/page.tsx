@@ -9,6 +9,7 @@ import {
 } from '@/lib/utils'
 import { Plus, CreditCard, Building, TrendingUp } from 'lucide-react'
 import { AddAccountModal } from '@/components/accounts/AddAccountModal'
+import { BankLogo, CardNetworkLogo, getBankBgColor } from '@/components/shared/BankLogo'
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -121,21 +122,24 @@ function CreditCardTile({ account }: { account: Account }) {
   return (
     <a href={`/accounts/${account.id}`} className="block group h-full">
       <div className="glass-card rounded-xl p-5 shadow-card hover:shadow-card-hover transition-all border border-border hover:border-gold-500/30 h-full flex flex-col">
-        {/* Card visual header */}
+        {/* Card visual header — styled like a real credit card */}
         <div
-          className="h-12 rounded-lg mb-4 flex items-end p-3"
+          className="h-16 rounded-lg mb-4 flex flex-col justify-between p-3 relative overflow-hidden"
           style={{
             background: account.color
-              ? `linear-gradient(135deg, ${account.color}, ${account.color}99)`
-              : 'linear-gradient(135deg, #1E1E2E, #16161F)'
+              ? `linear-gradient(135deg, ${account.color}DD, ${account.color}88)`
+              : `linear-gradient(135deg, ${getBankBgColor(account.institution)}EE, ${getBankBgColor(account.institution)}99)`
           }}
         >
-          <div className="flex items-center justify-between w-full">
-            <span className="text-xs text-white/70 font-mono">
-              •••• {account.last4 || '????'}
-            </span>
-            <CreditCard className="w-5 h-5 text-white/50" />
+          {/* Top row: bank logo left, network logo right */}
+          <div className="flex items-center justify-between">
+            <BankLogo institution={account.institution} size={22} white className="opacity-90" />
+            <CardNetworkLogo cardName={account.name} institution={account.institution} size={28} white className="opacity-80" />
           </div>
+          {/* Bottom row: masked number */}
+          <span className="text-xs text-white/75 font-mono tracking-widest">
+            •••• {account.last4 || '????'}
+          </span>
         </div>
 
         <p className="text-sm font-semibold text-text-primary group-hover:text-gold-500 transition-colors truncate">

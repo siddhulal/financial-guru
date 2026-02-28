@@ -23,4 +23,6 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
 
     @Query("SELECT a FROM Alert a WHERE a.isResolved = false ORDER BY a.createdAt DESC LIMIT 10")
     List<Alert> findRecentUnresolved();
+
+    List<Alert> findByTypeAndIsResolvedFalseOrderByCreatedAtDesc(Alert.AlertType type);
 }

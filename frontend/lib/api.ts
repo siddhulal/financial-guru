@@ -1,4 +1,23 @@
-import { Account, Alert, DashboardData, Page, Statement, Subscription, Transaction } from './types'
+import {
+  Account,
+  Alert,
+  Budget,
+  CashFlowResponse,
+  AnnualReviewResponse,
+  DebtPayoffResponse,
+  DashboardData,
+  FinancialProfile,
+  HealthScoreResponse,
+  Insight,
+  ManualAsset,
+  NetWorthResponse,
+  NetWorthSnapshot,
+  Page,
+  Statement,
+  Subscription,
+  Transaction,
+  WhatIfDataPoint,
+} from './types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
@@ -118,5 +137,60 @@ export const api = {
         body: JSON.stringify({ message }),
       }),
     suggestions: () => apiFetch<string[]>('/api/chat/suggestions'),
+  },
+
+  insights: {
+    debtPayoff: (extra?: number) =>
+      apiFetch<DebtPayoffResponse>(`/api/insights/debt-payoff${extra !== undefined ? `?extra=${extra}` : ''}`),
+    debtPayoffWhatIf: () =>
+      apiFetch<WhatIfDataPoint[]>('/api/insights/debt-payoff/what-if'),
+    healthScore: () => apiFetch<HealthScoreResponse>('/api/insights/health-score'),
+    cashFlow: (year: number, month: number) =>
+      apiFetch<CashFlowResponse>(`/api/insights/cash-flow?year=${year}&month=${month}`),
+    annualReview: (year: number) =>
+      apiFetch<AnnualReviewResponse>(`/api/insights/annual-review?year=${year}`),
+    list: () => apiFetch<Insight[]>('/api/insights'),
+    runEngine: () => apiFetch<{ count: number }>('/api/insights/run', { method: 'POST' }),
+    dismiss: (id: string) =>
+      apiFetch<Insight>(`/api/insights/${id}/dismiss`, { method: 'PUT' }),
+  },
+
+  budgets: {
+    list: () => apiFetch<Budget[]>('/api/budgets'),
+    upsert: (category: string, monthlyLimit: number) =>
+      apiFetch<Budget>('/api/budgets', {
+        method: 'POST',
+        body: JSON.stringify({ category, monthlyLimit }),
+      }),
+    update: (id: string, data: { category?: string; monthlyLimit?: number }) =>
+      apiFetch<Budget>(`/api/budgets/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      apiFetch<void>(`/api/budgets/${id}`, { method: 'DELETE' }),
+  },
+
+  networth: {
+    get: () => apiFetch<NetWorthResponse>('/api/networth'),
+    history: () => apiFetch<NetWorthSnapshot[]>('/api/networth/history'),
+    captureSnapshot: () => apiFetch<NetWorthSnapshot>('/api/networth/snapshot', { method: 'POST' }),
+    assets: {
+      list: () => apiFetch<ManualAsset[]>('/api/networth/assets'),
+      create: (data: { name: string; assetType: string; assetClass: string; currentValue: number; notes?: string }) =>
+        apiFetch<ManualAsset>('/api/networth/assets', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ name: string; assetType: string; assetClass: string; currentValue: number; notes: string }>) =>
+        apiFetch<ManualAsset>(`/api/networth/assets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        apiFetch<void>(`/api/networth/assets/${id}`, { method: 'DELETE' }),
+    },
+  },
+
+  profile: {
+    get: () => apiFetch<FinancialProfile>('/api/profile'),
+    update: (data: Partial<FinancialProfile>) =>
+      apiFetch<FinancialProfile>('/api/profile', { method: 'PUT', body: JSON.stringify(data) }),
+    detectIncome: () =>
+      apiFetch<{ monthlyIncome: number }>('/api/profile/detect-income', { method: 'POST' }),
   },
 }
