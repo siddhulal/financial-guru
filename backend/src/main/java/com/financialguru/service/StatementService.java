@@ -249,6 +249,7 @@ public class StatementService {
             case "CAPITAL_ONE"    -> "Capital One Card";
             case "DISCOVER"       -> "Discover Card";
             case "BANK_OF_AMERICA"-> "Bank of America Card";
+            case "GOLDMAN_SACHS"  -> "Apple Card";
             default               -> institution + " Card";
         };
     }

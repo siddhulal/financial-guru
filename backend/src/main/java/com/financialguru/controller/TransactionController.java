@@ -6,6 +6,7 @@ import com.financialguru.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/transactions")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Transactions", description = "Query and manage transactions")
 public class TransactionController {
 
@@ -63,5 +65,19 @@ public class TransactionController {
         filter.setPage(page);
         filter.setSize(size);
         return ResponseEntity.ok(transactionService.getTransactions(filter));
+    }
+
+    @PostMapping("/bulk-categorize")
+    @Operation(summary = "Bulk update transaction categories")
+    public void bulkCategorize(@RequestBody List<Map<String, String>> updates) {
+        // updates: [{id: "uuid", category: "Food"}]
+        for (Map<String, String> u : updates) {
+            try {
+                UUID id = UUID.fromString(u.get("id"));
+                transactionService.updateTransaction(id, Map.of("category", u.get("category")));
+            } catch (Exception e) {
+                log.warn("Failed to update transaction {}: {}", u.get("id"), e.getMessage());
+            }
+        }
     }
 }

@@ -1,22 +1,32 @@
 import {
   Account,
   Alert,
+  AlertRule,
+  AccountBalanceSnapshot,
   Budget,
   CashFlowResponse,
   AnnualReviewResponse,
+  CreditScoreResponse,
   DebtPayoffResponse,
   DashboardData,
+  DuplicateTransactionGroup,
+  FireCalculatorResponse,
   FinancialProfile,
   HealthScoreResponse,
   Insight,
   ManualAsset,
+  MerchantTrendResponse,
   NetWorthResponse,
   NetWorthSnapshot,
   Page,
+  SavingsGoal,
+  SearchResult,
+  SpendingHeatmapResponse,
   Statement,
   Subscription,
   Transaction,
   WhatIfDataPoint,
+  WeeklyDigestResponse,
 } from './types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -97,6 +107,8 @@ export const api = {
     anomalies: () => apiFetch<Transaction[]>('/api/transactions/anomalies'),
     search: (q: string) =>
       apiFetch<Page<Transaction>>(`/api/transactions/search?q=${encodeURIComponent(q)}`),
+    bulkCategorize: (updates: { id: string; category: string }[]) =>
+      apiFetch<void>('/api/transactions/bulk-categorize', { method: 'POST', body: JSON.stringify(updates) }),
   },
 
   alerts: {
@@ -153,6 +165,20 @@ export const api = {
     runEngine: () => apiFetch<{ count: number }>('/api/insights/run', { method: 'POST' }),
     dismiss: (id: string) =>
       apiFetch<Insight>(`/api/insights/${id}/dismiss`, { method: 'PUT' }),
+    spendingHeatmap: (year?: number) =>
+      apiFetch<SpendingHeatmapResponse>(`/api/insights/spending-heatmap${year ? `?year=${year}` : ''}`),
+    merchantTrend: (merchant: string) =>
+      apiFetch<MerchantTrendResponse>(`/api/insights/merchant-trend?merchant=${encodeURIComponent(merchant)}`),
+    creditScore: () => apiFetch<CreditScoreResponse>('/api/insights/credit-score'),
+    fireCalculator: (params: { age?: number; targetRetirementAge?: number; currentInvestments?: number; monthlyExpenses?: number }) => {
+      const qs = new URLSearchParams()
+      if (params.age) qs.set('age', String(params.age))
+      if (params.targetRetirementAge) qs.set('targetRetirementAge', String(params.targetRetirementAge))
+      if (params.currentInvestments) qs.set('currentInvestments', String(params.currentInvestments))
+      if (params.monthlyExpenses) qs.set('monthlyExpenses', String(params.monthlyExpenses))
+      return apiFetch<FireCalculatorResponse>(`/api/insights/fire-calculator?${qs}`)
+    },
+    duplicates: () => apiFetch<DuplicateTransactionGroup[]>('/api/insights/duplicates'),
   },
 
   budgets: {
@@ -193,4 +219,46 @@ export const api = {
     detectIncome: () =>
       apiFetch<{ monthlyIncome: number }>('/api/profile/detect-income', { method: 'POST' }),
   },
+
+  goals: {
+    list: () => apiFetch<SavingsGoal[]>('/api/goals'),
+    create: (data: Partial<SavingsGoal>) =>
+      apiFetch<SavingsGoal>('/api/goals', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<SavingsGoal>) =>
+      apiFetch<SavingsGoal>(`/api/goals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      apiFetch<void>(`/api/goals/${id}`, { method: 'DELETE' }),
+    addProgress: (id: string, amount: number) =>
+      apiFetch<SavingsGoal>(`/api/goals/${id}/progress`, { method: 'POST', body: JSON.stringify({ amount }) }),
+  },
+
+  search: (q: string) => apiFetch<SearchResult>(`/api/search?q=${encodeURIComponent(q)}`),
+
+  alertRules: {
+    list: () => apiFetch<AlertRule[]>('/api/alert-rules'),
+    create: (data: Partial<AlertRule>) =>
+      apiFetch<AlertRule>('/api/alert-rules', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<AlertRule>) =>
+      apiFetch<AlertRule>(`/api/alert-rules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      apiFetch<void>(`/api/alert-rules/${id}`, { method: 'DELETE' }),
+  },
+
+  digest: () => apiFetch<WeeklyDigestResponse>('/api/digest'),
+
+  export: {
+    transactionsCSV: (from: string, to: string, accountId?: string, category?: string) => {
+      const params = new URLSearchParams({ from, to })
+      if (accountId) params.set('accountId', accountId)
+      if (category) params.set('category', category)
+      return fetch(`${API_URL}/api/export/transactions/csv?${params}`)
+    },
+    monthlyPDF: (year: number, month: number) =>
+      fetch(`${API_URL}/api/export/monthly-pdf?year=${year}&month=${month}`),
+  },
+
+  balanceHistory: (accountId: string, days?: number) =>
+    apiFetch<AccountBalanceSnapshot[]>(`/api/accounts/${accountId}/balance-history${days ? `?days=${days}` : ''}`),
+
+  captureBalances: () => apiFetch<void>('/api/accounts/capture-balances', { method: 'POST' }),
 }

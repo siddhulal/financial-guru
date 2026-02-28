@@ -150,9 +150,10 @@ public class PdfExtractionService {
         if (header.contains("bank of america") || header.contains("bankofamerica")) return "BANK_OF_AMERICA";
         if (header.contains("wells fargo")) return "WELLS_FARGO";
         if (header.contains("citibank") || header.contains("citi card") || header.contains("citicards")) return "CITI";
-        if (header.contains("capital one")) return "CAPITAL_ONE";
+        if (header.contains("capital one") || header.contains("capitalone.com")) return "CAPITAL_ONE";
         if (header.contains("chase") || header.contains("jpmorgan")) return "CHASE";
-        if (header.contains("discover")) return "DISCOVER";
+        if (header.contains("discover") || header.contains("dfs services")) return "DISCOVER";
+        if (header.contains("goldman sachs") || header.contains("apple card") || header.contains("applecard.apple.com")) return "GOLDMAN_SACHS";
 
         // Fallback: scan full text if header had no match
         String lower = text.toLowerCase();
@@ -160,9 +161,10 @@ public class PdfExtractionService {
         if (lower.contains("bank of america") || lower.contains("bankofamerica")) return "BANK_OF_AMERICA";
         if (lower.contains("wells fargo")) return "WELLS_FARGO";
         if (lower.contains("citibank") || lower.contains("citi card")) return "CITI";
-        if (lower.contains("capital one")) return "CAPITAL_ONE";
+        if (lower.contains("capital one") || lower.contains("capitalone.com")) return "CAPITAL_ONE";
         if (lower.contains("chase") || lower.contains("jpmorgan")) return "CHASE";
-        if (lower.contains("discover")) return "DISCOVER";
+        if (lower.contains("discover") || lower.contains("dfs services")) return "DISCOVER";
+        if (lower.contains("goldman sachs") || lower.contains("apple card") || lower.contains("applecard.apple.com")) return "GOLDMAN_SACHS";
         return "GENERIC";
     }
 

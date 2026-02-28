@@ -4,6 +4,8 @@ import com.financialguru.dto.request.AccountRequest;
 import com.financialguru.dto.response.AccountResponse;
 import com.financialguru.dto.response.TransactionResponse;
 import com.financialguru.dto.request.TransactionFilterRequest;
+import com.financialguru.model.AccountBalanceSnapshot;
+import com.financialguru.service.AccountBalanceService;
 import com.financialguru.service.AccountService;
 import com.financialguru.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +27,7 @@ public class AccountController {
 
     private final AccountService accountService;
     private final TransactionService transactionService;
+    private final AccountBalanceService accountBalanceService;
 
     @GetMapping
     @Operation(summary = "List all active accounts")
@@ -68,5 +71,20 @@ public class AccountController {
     ) {
         filter.setAccountId(id);
         return ResponseEntity.ok(transactionService.getTransactions(filter));
+    }
+
+    @GetMapping("/{id}/balance-history")
+    @Operation(summary = "Get balance history for an account")
+    public ResponseEntity<List<AccountBalanceSnapshot>> getBalanceHistory(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "90") int days) {
+        return ResponseEntity.ok(accountBalanceService.getHistory(id, days));
+    }
+
+    @PostMapping("/capture-balances")
+    @Operation(summary = "Capture balance snapshots for all accounts")
+    public ResponseEntity<Void> captureBalances() {
+        accountBalanceService.captureSnapshots();
+        return ResponseEntity.ok().build();
     }
 }

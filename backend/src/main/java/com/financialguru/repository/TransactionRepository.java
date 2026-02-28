@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, UUID>, JpaSpecificationExecutor<Transaction> {
@@ -186,4 +187,53 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
         ORDER BY t.transactionDate DESC
         """)
     List<Transaction> findAllFeeTransactions(@Param("since") LocalDate since);
+
+    // Daily spending for heatmap
+    @Query("""
+        SELECT t.transactionDate, SUM(t.amount), COUNT(t)
+        FROM Transaction t
+        WHERE t.type = 'DEBIT'
+          AND t.transactionDate >= :start
+          AND t.transactionDate <= :end
+        GROUP BY t.transactionDate
+        ORDER BY t.transactionDate
+        """)
+    List<Object[]> findDailySpendingTotals(@Param("start") LocalDate start, @Param("end") LocalDate end);
+
+    // Merchant monthly trend (12 months)
+    @Query("""
+        SELECT FUNCTION('TO_CHAR', t.transactionDate, 'YYYY-MM'), SUM(t.amount)
+        FROM Transaction t
+        WHERE t.merchantName = :merchant
+          AND t.type = 'DEBIT'
+          AND t.transactionDate >= :since
+        GROUP BY FUNCTION('TO_CHAR', t.transactionDate, 'YYYY-MM')
+        ORDER BY FUNCTION('TO_CHAR', t.transactionDate, 'YYYY-MM')
+        """)
+    List<Object[]> findMerchantMonthlyTrend(@Param("merchant") String merchant, @Param("since") LocalDate since);
+
+    // Potential duplicates: same amount+merchant on different accounts within N days
+    @Query("""
+        SELECT t FROM Transaction t
+        WHERE t.type = 'DEBIT'
+          AND t.transactionDate >= :since
+          AND t.isFlagged = false
+        ORDER BY t.merchantName, t.amount, t.transactionDate DESC
+        """)
+    List<Transaction> findRecentUnflaggedDebits(@Param("since") LocalDate since);
+
+    // Bulk category update helper - find by ids
+    @Query("SELECT t FROM Transaction t WHERE t.id IN :ids")
+    List<Transaction> findAllByIds(@Param("ids") List<UUID> ids);
+
+    // Search transactions
+    @Query("""
+        SELECT t FROM Transaction t
+        WHERE (LOWER(t.merchantName) LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(t.description) LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(t.category) LIKE LOWER(CONCAT('%', :query, '%')))
+          AND t.type = 'DEBIT'
+        ORDER BY t.transactionDate DESC
+        """)
+    List<Transaction> searchTransactions(@Param("query") String query, Pageable pageable);
 }

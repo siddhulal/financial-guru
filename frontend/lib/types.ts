@@ -335,3 +335,155 @@ export interface Insight {
   isDismissed: boolean
   generatedAt: string
 }
+
+// Savings Goals
+export type GoalCategory = 'EMERGENCY_FUND' | 'VACATION' | 'DOWN_PAYMENT' | 'CAR' | 'RETIREMENT' | 'EDUCATION' | 'OTHER'
+
+export interface SavingsGoal {
+  id: string
+  name: string
+  category: GoalCategory
+  targetAmount: number
+  currentAmount: number
+  targetDate: string | null
+  linkedAccountId: string | null
+  color: string | null
+  isActive: boolean
+  notes: string | null
+  percentComplete: number
+  monthlyRequired: number
+  projectedDate: string | null
+  monthsRemaining: number
+  isOnTrack: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Alert Rules
+export type AlertRuleType = 'TRANSACTION_AMOUNT' | 'MONTHLY_CATEGORY_SPEND' | 'BALANCE_BELOW' | 'UTILIZATION_ABOVE'
+
+export interface AlertRule {
+  id: string
+  name: string
+  ruleType: AlertRuleType
+  conditionOperator: string
+  thresholdAmount: number
+  category: string | null
+  accountId: string | null
+  isActive: boolean
+  lastTriggeredAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Account Balance Snapshot
+export interface AccountBalanceSnapshot {
+  id: string
+  accountId: string
+  snapshotDate: string
+  balance: number
+  createdAt: string
+}
+
+// Spending Heatmap
+export interface HeatmapDay {
+  date: string
+  totalSpend: number
+  transactionCount: number
+  intensity: number  // 0-4
+}
+
+export interface SpendingHeatmapResponse {
+  year: number
+  days: HeatmapDay[]
+  maxDailySpend: number
+  totalAnnualSpend: number
+}
+
+// Merchant Trend
+export interface MerchantTrendResponse {
+  merchantName: string
+  months: { month: string; amount: number }[]
+  totalAnnual: number
+  avgMonthly: number
+  trend: 'INCREASING' | 'STABLE' | 'DECREASING'
+}
+
+// Duplicate Transactions
+export interface DuplicateTransactionGroup {
+  merchantName: string
+  amount: number
+  transactions: Transaction[]
+  withinDays: number
+}
+
+// Credit Score
+export interface CardUtilizationDetail {
+  accountId: string
+  accountName: string
+  balance: number
+  creditLimit: number
+  utilizationPct: number
+  recommendedPayment: number
+  targetUtilization: number
+}
+
+export interface WhatIfCreditScenario {
+  description: string
+  paymentAmount: number
+  newUtilizationPct: number
+  estimatedScoreImpact: number
+}
+
+export interface CreditScoreResponse {
+  estimatedScore: number
+  utilizationImpact: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR'
+  cards: CardUtilizationDetail[]
+  recommendations: string[]
+  whatIfScenarios: WhatIfCreditScenario[]
+}
+
+// FIRE Calculator
+export interface YearProjection {
+  year: number
+  portfolioValue: number
+  annualContribution: number
+}
+
+export interface FireCalculatorResponse {
+  fiNumber: number
+  currentSavings: number
+  annualExpenses: number
+  monthlySavings: number
+  yearsToFire: number
+  fireDate: string
+  savingsRate: number
+  monthlySavingsGap: number
+  projections: YearProjection[]
+  monteCarloP10: number[]
+  monteCarloP50: number[]
+  monteCarloP90: number[]
+}
+
+// Search
+export interface SearchResult {
+  query: string
+  transactions: Transaction[]
+  accounts: Account[]
+  merchants: string[]
+  totalResults: number
+}
+
+// Weekly Digest
+export interface WeeklyDigestResponse {
+  weekStart: string
+  weekEnd: string
+  totalSpend: number
+  priorWeekSpend: number
+  spendingChangePercent: number
+  topTransactions: { merchant: string; amount: number; date: string; category: string }[]
+  budgetStatuses: Budget[]
+  upcomingPayments: { account: string; dueDate: string; balance: number }[]
+  categoryBreakdown: { category: string; amount: number }[]
+  unreadInsightCount: number
+}

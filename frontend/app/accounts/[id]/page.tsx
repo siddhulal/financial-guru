@@ -3,13 +3,16 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { api } from '@/lib/api'
-import { Account, Statement, Transaction, Page } from '@/lib/types'
+import { Account, Statement, Transaction, Page, AccountBalanceSnapshot } from '@/lib/types'
 import {
   formatCurrency, formatPercent, formatDate,
   getUtilizationColor, getUtilizationBarColor, getCategoryEmoji
 } from '@/lib/utils'
-import { CreditCard, ArrowLeft, AlertTriangle, Pencil } from 'lucide-react'
+import { CreditCard, ArrowLeft, AlertTriangle, Pencil, TrendingUp, Camera } from 'lucide-react'
 import Link from 'next/link'
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts'
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,6 +30,12 @@ export default function AccountDetailPage() {
   const [dueDayInput, setDueDayInput] = useState('')
   const [savingDueDay, setSavingDueDay] = useState(false)
 
+  // Balance history state
+  const [balanceHistory, setBalanceHistory] = useState<AccountBalanceSnapshot[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [capturingBalance, setCapturingBalance] = useState(false)
+  const [captureSuccess, setCaptureSuccess] = useState(false)
+
   useEffect(() => {
     Promise.all([
       api.accounts.get(id),
@@ -41,7 +50,37 @@ export default function AccountDetailPage() {
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       setLatestStatement(accountStmts[0] ?? null)
     }).finally(() => setLoading(false))
+
+    // Load balance history
+    loadBalanceHistory()
   }, [id])
+
+  async function loadBalanceHistory() {
+    setHistoryLoading(true)
+    try {
+      const history = await api.balanceHistory(id, 90)
+      setBalanceHistory(history)
+    } catch {
+      // ignore — endpoint may not exist yet
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  async function captureBalance() {
+    setCapturingBalance(true)
+    setCaptureSuccess(false)
+    try {
+      await api.captureBalances()
+      setCaptureSuccess(true)
+      await loadBalanceHistory()
+      setTimeout(() => setCaptureSuccess(false), 3000)
+    } catch {
+      // ignore
+    } finally {
+      setCapturingBalance(false)
+    }
+  }
 
   async function saveDueDay() {
     if (!account) return
@@ -382,6 +421,93 @@ export default function AccountDetailPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Balance History */}
+      <div className="glass-card rounded-xl shadow-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-gold-500" />
+            <h2 className="text-sm font-semibold text-text-primary">Balance History (90 days)</h2>
+          </div>
+          <button
+            onClick={captureBalance}
+            disabled={capturingBalance}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-lg text-text-secondary hover:bg-background-tertiary disabled:opacity-50 transition-colors"
+          >
+            {capturingBalance ? (
+              <div className="w-3 h-3 border-t border-current rounded-full animate-spin" />
+            ) : (
+              <Camera className="w-3.5 h-3.5" />
+            )}
+            {captureSuccess ? 'Captured!' : 'Capture Today'}
+          </button>
+        </div>
+
+        <div className="p-5">
+          {historyLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-gold-500" />
+            </div>
+          ) : balanceHistory.length === 0 ? (
+            <div className="text-center py-8 text-text-muted text-sm">
+              <p>No balance history yet.</p>
+              <p className="text-xs mt-1">Click "Capture Today" to start tracking your balance over time.</p>
+            </div>
+          ) : (
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={balanceHistory.map(s => ({
+                    date: s.snapshotDate,
+                    balance: s.balance,
+                  }))}
+                  margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="balanceGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1A1A24" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: '#6B7280', fontSize: 10 }}
+                    tickLine={false}
+                    tickFormatter={d => {
+                      const dt = new Date(d)
+                      return `${dt.getMonth() + 1}/${dt.getDate()}`
+                    }}
+                  />
+                  <YAxis
+                    tick={{ fill: '#6B7280', fontSize: 10 }}
+                    tickFormatter={v => `$${(v / 1000).toFixed(0)}k`}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#111118', border: '1px solid #2A2A35', borderRadius: '8px', color: '#F9FAFB' }}
+                    formatter={(v: number) => [
+                      `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                      'Balance'
+                    ]}
+                    labelFormatter={label => `Date: ${label}`}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="balance"
+                    stroke="#F59E0B"
+                    strokeWidth={2}
+                    fill="url(#balanceGrad)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: '#F59E0B' }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

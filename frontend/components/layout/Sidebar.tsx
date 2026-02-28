@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Target,
   Lightbulb,
+  Calendar,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +27,8 @@ const navItems = [
   { href: '/subscriptions', label: 'Subscriptions', icon: RefreshCw },
   { href: '/advisor', label: 'AI Advisor', icon: MessageSquare },
   { href: '/budget', label: 'Budget', icon: Target },
+  { href: '/goals', label: 'Goals', icon: Target },
+  { href: '/digest', label: 'Digest', icon: Calendar },
   { href: '/insights', label: 'Insights', icon: Lightbulb },
 ]
 
@@ -35,6 +38,9 @@ const insightsSubItems = [
   { href: '/insights/net-worth', label: 'Net Worth' },
   { href: '/insights/cash-flow', label: 'Cash Flow' },
   { href: '/insights/annual-review', label: 'Annual Review' },
+  { href: '/insights/spending-heatmap', label: 'Spending Heatmap' },
+  { href: '/insights/credit-score', label: 'Credit Score' },
+  { href: '/insights/fire-calculator', label: 'FIRE Calculator' },
 ]
 
 export function Sidebar() {

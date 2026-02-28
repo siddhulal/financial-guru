@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { Transaction, Page, Account } from '@/lib/types'
 import { formatCurrency, formatDate, getCategoryEmoji, cn } from '@/lib/utils'
-import { Search, Filter, Download, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Search, Filter, Download, AlertTriangle, RefreshCw, CheckSquare, Square, Tag } from 'lucide-react'
 
 const CATEGORIES = [
   'Dining', 'Groceries', 'Shopping', 'Travel', 'Gas', 'Entertainment',
@@ -24,6 +24,15 @@ export default function TransactionsPage() {
     endDate: '',
     page: 0,
   })
+
+  // Bulk edit state
+  const [bulkMode, setBulkMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkCategory, setBulkCategory] = useState('')
+  const [recategorizing, setRecategorizing] = useState(false)
+
+  // Export state
+  const [exporting, setExporting] = useState(false)
 
   const setFilter = (key: string, value: string) =>
     setFilters(f => ({ ...f, [key]: value, page: 0 }))
@@ -51,46 +60,193 @@ export default function TransactionsPage() {
 
   useEffect(() => { load() }, [load])
 
-  const exportCsv = () => {
-    if (!data) return
-    const rows = [
-      ['Date', 'Merchant', 'Category', 'Amount', 'Type', 'Account', 'Flagged'],
-      ...data.content.map(t => [
-        t.transactionDate,
-        t.merchantName || t.description || '',
-        t.category || '',
-        t.amount.toString(),
-        t.type || '',
-        t.accountName || '',
-        t.isFlagged ? 'Yes' : 'No',
-      ])
-    ]
-    const csv = rows.map(r => r.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'transactions.csv'
-    a.click()
+  // Reset selection when filters or page changes
+  useEffect(() => {
+    setSelected(new Set())
+  }, [filters])
+
+  const exportCsv = async () => {
+    const from = filters.startDate || '2020-01-01'
+    const to = filters.endDate || new Date().toISOString().slice(0, 10)
+    setExporting(true)
+    try {
+      const res = await api.export.transactionsCSV(
+        from,
+        to,
+        filters.accountId || undefined,
+        filters.category || undefined,
+      )
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `transactions-${from}-to-${to}.csv`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else {
+        // Fallback: build CSV from current page data
+        if (!data) return
+        const rows = [
+          ['Date', 'Merchant', 'Category', 'Amount', 'Type', 'Account', 'Flagged'],
+          ...data.content.map(t => [
+            t.transactionDate,
+            t.merchantName || t.description || '',
+            t.category || '',
+            t.amount.toString(),
+            t.type || '',
+            t.accountName || '',
+            t.isFlagged ? 'Yes' : 'No',
+          ])
+        ]
+        const csv = rows.map(r => r.join(',')).join('\n')
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'transactions.csv'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
+    } catch {
+      // Fallback on error
+      if (!data) return
+      const rows = [
+        ['Date', 'Merchant', 'Category', 'Amount', 'Type', 'Account', 'Flagged'],
+        ...data.content.map(t => [
+          t.transactionDate,
+          t.merchantName || t.description || '',
+          t.category || '',
+          t.amount.toString(),
+          t.type || '',
+          t.accountName || '',
+          t.isFlagged ? 'Yes' : 'No',
+        ])
+      ]
+      const csv = rows.map(r => r.join(',')).join('\n')
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'transactions.csv'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
   }
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (!data) return
+    if (selected.size === data.content.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(data.content.map(t => t.id)))
+    }
+  }
+
+  async function handleBulkCategorize() {
+    if (!bulkCategory || selected.size === 0) return
+    setRecategorizing(true)
+    try {
+      const updates = Array.from(selected).map(id => ({ id, category: bulkCategory }))
+      await api.transactions.bulkCategorize(updates)
+      await load()
+      setSelected(new Set())
+      setBulkCategory('')
+    } catch {
+      // ignore
+    } finally {
+      setRecategorizing(false)
+    }
+  }
+
+  const allSelected = data ? selected.size === data.content.length && data.content.length > 0 : false
 
   return (
     <div className="space-y-5 animate-slide-up">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-text-primary">Transactions</h1>
           <p className="text-sm text-text-muted mt-0.5">
             {data ? `${data.totalElements.toLocaleString()} transactions` : '—'}
           </p>
         </div>
-        <button
-          onClick={exportCsv}
-          className="flex items-center gap-2 px-3 py-2 border border-border text-text-secondary text-sm rounded-lg hover:bg-background-tertiary transition-colors"
-        >
-          <Download className="w-4 h-4" /> Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setBulkMode(m => !m); setSelected(new Set()) }}
+            className={cn(
+              'flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors',
+              bulkMode
+                ? 'bg-gold-500/10 border-gold-500/30 text-gold-500'
+                : 'border-border text-text-secondary hover:bg-background-tertiary'
+            )}
+          >
+            <CheckSquare className="w-4 h-4" />
+            {bulkMode ? 'Exit Bulk' : 'Bulk Edit'}
+          </button>
+          <button
+            onClick={exportCsv}
+            disabled={exporting}
+            className="flex items-center gap-2 px-3 py-2 border border-border text-text-secondary text-sm rounded-lg hover:bg-background-tertiary disabled:opacity-50 transition-colors"
+          >
+            {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Export CSV
+          </button>
+        </div>
       </div>
+
+      {/* Bulk edit bar */}
+      {bulkMode && (
+        <div className="bg-gold-500/5 border border-gold-500/20 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button onClick={toggleSelectAll} className="text-gold-500 hover:text-gold-400 transition-colors">
+              {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+            </button>
+            <span className="text-sm text-text-secondary">
+              {selected.size > 0 ? `${selected.size} selected` : 'Select transactions to bulk recategorize'}
+            </span>
+          </div>
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-text-muted" />
+              <select
+                value={bulkCategory}
+                onChange={e => setBulkCategory(e.target.value)}
+                className="bg-background-tertiary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary outline-none focus:border-gold-500 transition-colors"
+              >
+                <option value="">Select category...</option>
+                {CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleBulkCategorize}
+                disabled={!bulkCategory || recategorizing}
+                className="px-3 py-1.5 bg-gold-500 text-black text-sm font-semibold rounded-lg hover:bg-gold-400 disabled:opacity-50 transition-colors"
+              >
+                {recategorizing ? 'Updating...' : 'Recategorize Selected'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="glass-card rounded-xl p-4 shadow-card">
@@ -164,6 +320,13 @@ export default function TransactionsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
+                  {bulkMode && (
+                    <th className="px-4 py-3 w-10">
+                      <button onClick={toggleSelectAll} className="text-gold-500 hover:text-gold-400 transition-colors">
+                        {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    </th>
+                  )}
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Date</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Merchant</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">Category</th>
@@ -174,7 +337,14 @@ export default function TransactionsPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {data.content.map((t) => (
-                  <TransactionRow key={t.id} transaction={t} onUpdate={load} />
+                  <TransactionRow
+                    key={t.id}
+                    transaction={t}
+                    onUpdate={load}
+                    bulkMode={bulkMode}
+                    isSelected={selected.has(t.id)}
+                    onToggleSelect={() => toggleSelect(t.id)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -210,7 +380,19 @@ export default function TransactionsPage() {
   )
 }
 
-function TransactionRow({ transaction: t, onUpdate }: { transaction: Transaction; onUpdate: () => void }) {
+function TransactionRow({
+  transaction: t,
+  onUpdate,
+  bulkMode,
+  isSelected,
+  onToggleSelect,
+}: {
+  transaction: Transaction
+  onUpdate: () => void
+  bulkMode: boolean
+  isSelected: boolean
+  onToggleSelect: () => void
+}) {
   const [editing, setEditing] = useState(false)
   const [category, setCategory] = useState(t.category || '')
 
@@ -223,10 +405,25 @@ function TransactionRow({ transaction: t, onUpdate }: { transaction: Transaction
   const isDebit = t.type === 'DEBIT' || t.type === 'FEE' || t.type === 'INTEREST'
 
   return (
-    <tr className={cn(
-      'hover:bg-background-tertiary/50 transition-colors',
-      t.isFlagged && 'bg-red-500/5'
-    )}>
+    <tr
+      className={cn(
+        'hover:bg-background-tertiary/50 transition-colors',
+        t.isFlagged && 'bg-red-500/5',
+        isSelected && 'bg-gold-500/5',
+        bulkMode && 'cursor-pointer'
+      )}
+      onClick={() => bulkMode && onToggleSelect()}
+    >
+      {bulkMode && (
+        <td className="px-4 py-3 w-10">
+          <button
+            onClick={e => { e.stopPropagation(); onToggleSelect() }}
+            className="text-gold-500 hover:text-gold-400 transition-colors"
+          >
+            {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+          </button>
+        </td>
+      )}
       <td className="px-4 py-3 text-xs font-num text-text-muted whitespace-nowrap">
         {formatDate(t.transactionDate)}
       </td>
@@ -238,7 +435,7 @@ function TransactionRow({ transaction: t, onUpdate }: { transaction: Transaction
           <p className="text-xs text-text-muted truncate max-w-[200px]">{t.description}</p>
         )}
       </td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
         {editing ? (
           <div className="flex gap-1">
             <select
@@ -255,7 +452,7 @@ function TransactionRow({ transaction: t, onUpdate }: { transaction: Transaction
           </div>
         ) : (
           <button
-            onClick={() => setEditing(true)}
+            onClick={() => !bulkMode && setEditing(true)}
             className="text-xs text-text-secondary hover:text-text-primary transition-colors"
           >
             {t.category ? (

@@ -25,6 +25,8 @@ public class SchedulerService {
     private final BudgetService budgetService;
     private final InsightEngineService insightEngineService;
     private final NetWorthService netWorthService;
+    private final AlertRuleService alertRuleService;
+    private final AccountBalanceService accountBalanceService;
 
     // Run daily at 8 AM
     @Scheduled(cron = "0 0 8 * * *")
@@ -168,5 +170,17 @@ public class SchedulerService {
     public void captureMonthlyNetWorth() {
         log.info("Capturing monthly net worth snapshot...");
         netWorthService.captureSnapshot();
+    }
+
+    @Scheduled(cron = "0 0 23 * * *")
+    public void evaluateAlertRules() {
+        log.info("Evaluating custom alert rules...");
+        alertRuleService.evaluateRules();
+    }
+
+    @Scheduled(cron = "0 30 23 * * *")
+    public void captureBalanceSnapshots() {
+        log.info("Capturing balance snapshots...");
+        accountBalanceService.captureSnapshots();
     }
 }
