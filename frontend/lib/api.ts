@@ -20,6 +20,7 @@ import {
   NetWorthSnapshot,
   Page,
   SavingsGoal,
+  SavingsPlanResponse,
   SearchResult,
   SpendingHeatmapResponse,
   Statement,
@@ -149,6 +150,13 @@ export const api = {
         body: JSON.stringify({ message }),
       }),
     suggestions: () => apiFetch<string[]>('/api/chat/suggestions'),
+    savingsPlan: (target: number) =>
+      apiFetch<SavingsPlanResponse>(`/api/chat/savings-plan?target=${target}`, { method: 'POST' }),
+    enriched: (message: string) =>
+      apiFetch<{ response: string }>('/api/chat/enriched', {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      }),
   },
 
   insights: {

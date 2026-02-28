@@ -17,7 +17,7 @@ export default function AdvisorPage() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: "Hi! I'm your personal financial advisor powered by a local AI model. I have access to your account balances, spending patterns, and subscription data. Ask me anything about your finances — I'll keep everything private and on your device.",
+      content: "Hi! I'm your personal financial advisor powered by a local AI model. I have full access to your income, spending by category, account balances, and subscriptions — all analyzed from your actual transaction history. Ask me anything: 'How do I save $300 more?' or 'Where am I wasting money?' or 'Should I pay off Chase or invest?' — I'll give you specific answers based on your actual numbers.",
       timestamp: new Date(),
     }
   ])
@@ -55,7 +55,7 @@ export default function AdvisorPage() {
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 120_000)
-      const res = await api.chat.send(text)
+      const res = await api.chat.enriched(text)
       clearTimeout(timeout)
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),

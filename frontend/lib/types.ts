@@ -500,3 +500,49 @@ export interface WeeklyDigestResponse {
   categoryBreakdown: { category: string; amount: number }[]
   unreadInsightCount: number
 }
+
+// Savings Plan
+export interface TopMerchant {
+  name: string
+  monthlyAmount: number
+  transactionCount: number
+}
+
+export interface CategoryRecommendation {
+  category: string
+  currentMonthlySpend: number
+  targetMonthlySpend: number
+  monthlySavings: number
+  benchmarkAmount: number
+  benchmarkPct: number
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD'
+  easeScore: number
+  topMerchants: TopMerchant[]
+  specificActions: string[]
+  reasoning: string
+}
+
+export interface SpendingCategory {
+  category: string
+  monthlyAvg: number
+  pctOfIncome: number
+  benchmarkPct: number
+  status: 'OVER' | 'OK' | 'GOOD'
+}
+
+export interface SavingsPlanResponse {
+  monthlyIncome: number
+  currentMonthlySpend: number
+  currentMonthlySavings: number
+  currentSavingsRatePct: number
+  targetAdditionalSavings: number
+  targetMonthlySavings: number
+  targetSavingsRatePct: number
+  totalRecommendedSavings: number
+  coveragePct: number
+  goalAchievable: boolean
+  aiNarrative: string
+  aiAvailable: boolean
+  recommendations: CategoryRecommendation[]
+  spendingBreakdown: SpendingCategory[]
+}
