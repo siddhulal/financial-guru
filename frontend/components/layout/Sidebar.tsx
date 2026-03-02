@@ -17,11 +17,15 @@ import {
   Calendar,
   Sparkles,
   Brain,
+  User,
+  Briefcase,
+  Compass,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/profile', label: 'My Profile', icon: User },
   { href: '/accounts', label: 'Accounts', icon: CreditCard },
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/statements', label: 'Statements', icon: FileText },
@@ -30,6 +34,8 @@ const navItems = [
   { href: '/advisor', label: 'AI Advisor', icon: MessageSquare },
   { href: '/advisor/savings-plan', label: 'Savings Planner', icon: Sparkles },
   { href: '/advisor/brain', label: 'Financial Brain', icon: Brain },
+  { href: '/advisor/career', label: 'Career Advisor', icon: Briefcase },
+  { href: '/advisor/life-coach', label: 'Life Coach', icon: Compass },
   { href: '/budget', label: 'Budget', icon: Target },
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/digest', label: 'Digest', icon: Calendar },

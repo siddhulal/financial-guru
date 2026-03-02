@@ -52,6 +52,10 @@ app:
     model: ${OLLAMA_MODEL:gemma3:4b}
     timeout-seconds: 120
 
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: gemini-2.0-flash
+
   upload:
     dir: ${UPLOAD_DIR:./uploads/statements}
 

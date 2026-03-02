@@ -610,6 +610,80 @@ export interface BrainReportResponse {
   scenarios: ScenarioResult[]
   topCategories: CategoryInsight[]
   actionRoadmap: ActionItem[]
+  assumedNominalReturn: number
+  assumedInflationRate: number
+  assumedRealReturn: number
   aiNarrative: string
   aiAvailable: boolean
+}
+
+// ── Life OS ──────────────────────────────────────────────────────────────────
+
+export interface LifeProfile {
+  id: string
+  firstName: string | null
+  birthYear: number | null
+  age: number | null
+  city: string | null
+  state: string | null
+  country: string | null
+  jobTitle: string | null
+  company: string | null
+  industry: string | null
+  employmentType: string
+  yearsAtCurrentJob: number | null
+  totalYearsExperience: number | null
+  annualSalary: number | null
+  annualBonus: number | null
+  equityAnnualValue: number | null
+  skills: string | null
+  isMarried: boolean
+  spouseEmployed: boolean
+  spouseJobTitle: string | null
+  spouseAnnualIncome: number | null
+  numberOfKids: number
+  kidsAges: string | null
+  notes: string | null
+  householdAnnualIncome: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CareerAdviceResponse {
+  jobTitle: string | null
+  industry: string | null
+  location: string | null
+  percentileLabel: string | null
+  currentSalary: number
+  marketP25: number
+  marketP50: number
+  marketP75: number
+  salaryGap: number
+  isUnderpaid: boolean
+  jobChangeRecommendation: 'RECOMMENDED' | 'NEUTRAL' | 'NOT_NOW' | null
+  jobChangeReasoning: string | null
+  skillsToLearn: string[]
+  careerPathAdvice: string | null
+  aiNarrative: string | null
+  source: 'GEMINI' | 'OLLAMA' | 'RULE' | 'NONE'
+  profileComplete: boolean
+  profileMessage: string | null
+}
+
+export interface LifeGuidance {
+  id: string
+  guidanceType: string
+  title: string
+  content: string
+  actionItems: string | null
+  source: string
+  isDismissed: boolean
+  generatedAt: string
+}
+
+export interface LifeGuidanceResponse {
+  thisMonth: LifeGuidance | null
+  careerItems: LifeGuidance[]
+  history: LifeGuidance[]
+  geminiAvailable: boolean
 }

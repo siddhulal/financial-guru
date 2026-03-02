@@ -5,6 +5,7 @@ import {
   AccountBalanceSnapshot,
   BrainReportResponse,
   Budget,
+  CareerAdviceResponse,
   CashFlowResponse,
   AnnualReviewResponse,
   CreditScoreResponse,
@@ -15,6 +16,9 @@ import {
   FinancialProfile,
   HealthScoreResponse,
   Insight,
+  LifeGuidance,
+  LifeGuidanceResponse,
+  LifeProfile,
   ManualAsset,
   MerchantTrendResponse,
   NetWorthResponse,
@@ -273,5 +277,23 @@ export const api = {
 
   brain: {
     report: () => apiFetch<BrainReportResponse>('/api/brain'),
+  },
+
+  lifeProfile: {
+    get: () => apiFetch<LifeProfile>('/api/life-profile'),
+    update: (data: Partial<LifeProfile>) =>
+      apiFetch<LifeProfile>('/api/life-profile', { method: 'PUT', body: JSON.stringify(data) }),
+  },
+
+  career: {
+    advice: () => apiFetch<CareerAdviceResponse>('/api/career/advice'),
+    refresh: () => apiFetch<CareerAdviceResponse>('/api/career/refresh', { method: 'POST' }),
+  },
+
+  lifeCoach: {
+    get: () => apiFetch<LifeGuidanceResponse>('/api/life-coach'),
+    generate: () => apiFetch<LifeGuidance>('/api/life-coach/generate', { method: 'POST' }),
+    dismiss: (id: string) =>
+      apiFetch<void>(`/api/life-coach/${id}/dismiss`, { method: 'PUT' }),
   },
 }

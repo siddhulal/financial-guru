@@ -47,4 +47,12 @@ public class OllamaConfig {
     public String ollamaBaseUrl() {
         return ollamaBaseUrl;
     }
+
+    @Bean(name = "geminiRestTemplate")
+    public RestTemplate geminiRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10_000);
+        factory.setReadTimeout(30_000);
+        return new RestTemplate(factory);
+    }
 }
